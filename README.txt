@@ -4,6 +4,7 @@ Baetge, N., Halesy, K., Graff, J.R., Ver Wey, B., Westberry, T., Appel, A.E., Bo
 
 All code and data provided in this repository are freely available for use. Please do not hesitate to contact me if you have questions or comments or if you find errors/inaccuracies.
 
+Final data used in the manuscript are found in the "final_data" folder. 
 
 R scripts used in analyses are found in the "analyses" folder and can be run using R Studio. The analyses can be replicated as follows:
 
