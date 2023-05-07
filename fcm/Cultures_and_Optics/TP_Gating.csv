@@ -1,2 +1,0 @@
-alias,pop,parent,dims,gating_method,gating_args,collapseDataForGating,groupBy,preprocessing_method,preprocessing_args
-cells,+,root,"FSC-HLog,RED-Hlog",flowClust,"K=1,quantile=0.9",NA,NA,,NA

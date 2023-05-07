@@ -1,3 +1,0 @@
-alias,pop,parent,dims,gating_method,gating_args,collapseDataForGating,groupBy,preprocessing_method,preprocessing_args
-nondebris,+,root,"GRN-HLog,YEL-HLog",flowClust,"K=1,quantile=0.9",,NA,,NA
-cells,+,nondebris,"FSC-HLog,SSC-HLog",boundary,"min=c(0.25,0.25), max=c(2.5, 2.5)",,NA,,NA

@@ -1,5 +1,0 @@
-
--SYN22-5 cell abundances in optical instruments were underestimated due to cytometer sensor saturation. Cell abundances in optical instruments for SYN22-5 were thus estimated by multiplying the optical cell concentrations by the SYN22-4 ratio of optical cell concentrations to culture cell concentrations.
-
-
-

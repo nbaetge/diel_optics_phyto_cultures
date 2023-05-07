@@ -1,0 +1,374 @@
+Calculations_for_MS
+================
+Nicholas Baetge
+Last compiled on 26 April, 2023
+
+- 
+
+<!-- -->
+
+    ```{r,load packages, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+library(tidyverse)
+library(rstatix)
+```
+
+    ```
+
+############# 
+
+# IMPORT DATA
+
+############## 
+
+    ```{r,import data,  message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+bf <- read_csv("FINAL_BOTTLE.csv")
+sf <- read_csv("FINAL_SUMMARY.csv")
+gaus <- read_csv("Gaussian_Decompositions.csv")
+pigs <- read_csv("Pigment_Ratios.csv")
+pf <- read_csv("PAR.csv")
+```
+
+    ```
+
+    ```{r,cells data,  message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+cells_data <-  sf %>% 
+  select(exp, exp_no, phyto, source, tp, plot_datetime, mean_cells, sd_cells) %>% 
+  distinct() %>% 
+  filter(!exp == "OL22-3" | !tp == 4) %>% 
+  mutate_at(vars(mean_cells, sd_cells), ~ . * 1E6) %>% 
+  ungroup()
+```
+
+    ```
+
+    ```{r,fcm data, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+fcm_data <- sf %>% 
+  select(exp, exp_no, phyto, source, tp, plot_datetime, mean_fsc, mean_ssc, mean_red, mean_yel) %>% 
+  distinct() %>% 
+  rename_with(~str_remove(., 'mean_')) %>% 
+  filter(!exp == "OL22-3" | !tp == 4) %>% 
+  filter(!exp == "SYN22-5" | !source == "Culture") %>% 
+  group_by(exp, exp_no, phyto, plot_datetime) %>% 
+  summarize(across(
+    .cols = fsc:yel,
+    .fns = list(mean = mean, sd = sd),
+    na.rm = TRUE,
+    .names = "{fn}_{col}"
+  ))  %>% 
+  ungroup() %>% 
+  group_by(exp) %>% 
+  mutate_at(vars(5,7, 9,11), ~ ./(first(.))) %>% 
+  ungroup() 
+```
+
+    ```
+
+    ```{r,frr data, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+frr_data <- sf %>%
+  select(exp, exp_no, phyto, tp, plot_datetime, mean_Fv_Fm) %>% 
+  drop_na(mean_Fv_Fm) 
+```
+
+    ```
+
+``` r
+pigs_data <- pigs %>% 
+  filter(spectra %in% c("ppc_chla", "psc_chla", "pub_peb", "pe_chla", "chlb_chla")) %>% 
+  mutate(peak = ifelse(peak == Inf, NA, peak)) %>% 
+  select(exp:plot_datetime, spectra, peak) %>% 
+  pivot_wider(names_from = spectra, values_from = peak)
+```
+
+    ```{r,optics data,  message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+optics_data <- bf %>%
+  filter(source == "Optics", wl %in% c(470, 532, 660)) %>%
+  select(exp, exp_no, phyto, bottle, tp, plot_datetime,  wl, cells, chl_line_height,  poc_optics, pon_optics, cp, ap, bp,  bbp, bb_b) %>% 
+  mutate_at(vars(cells), ~ . * 1E6) %>%  # convert cell abundance from cells/ml to m^-3
+  mutate_at(vars(poc_optics, pon_optics), ~ . / 1E3) %>% # convert from mg/m3 to g/m3
+  mutate_at(vars(wl), as.character) %>%
+  distinct() %>% 
+  mutate(chl_cell = (chl_line_height/cells) * 10^12, # mg chl/cell to fg chl per cell
+         poc_cell = (poc_optics/cells) * 10^12, #g/cell convert to pg c per cell
+         pon_cell = (pon_optics/cells) * 10^12, #g/cell convert to pg n per cell
+         c_chl = ((poc_optics * 1E3)/chl_line_height), #mg to mg
+         a_star = ap / (chl_line_height / 1E3), # m2 per g chl
+         sigma_a = (ap / cells)  * 10^12, #m2 per cell * 10^12
+         a_poc = ap / poc_optics, #m2 per g C
+         c_star = cp /  (chl_line_height / 1E3),
+         sigma_c = (cp / cells) * 10^12,
+         c_poc = cp / poc_optics,
+         bb_star = bbp /  (chl_line_height / 1E3),
+         sigma_bb = (bbp / cells) * 10^12,
+         bb_poc = bbp / poc_optics
+         )
+
+optics_summary <- optics_data %>% 
+  group_by(exp, exp_no, phyto, tp, plot_datetime,  wl) %>% 
+   summarize(across(
+    .cols = cells:bb_poc,
+    .fns = list(mean = mean, sd = sd),
+    na.rm = TRUE,
+    .names = "{fn}_{col}"
+  ))  %>% 
+     ungroup() %>% 
+  arrange(factor(phyto, levels = unique(optics_data$phyto)))
+
+cell_comp_data <-  bf %>%
+  filter(source == "Optics") %>%
+  select(exp, exp_no, phyto, tp, plot_datetime,  poc_optics, sd_poc_optics,  pon_optics, sd_pon_optics, mean_cn, sd_cn) %>% 
+  distinct() %>% 
+  left_join(., optics_summary %>% select(exp:plot_datetime,mean_chl_line_height, sd_chl_line_height, mean_chl_cell, sd_chl_cell,mean_c_chl, sd_c_chl, mean_poc_cell, sd_poc_cell, mean_pon_cell, sd_pon_cell)) %>% 
+  select(exp:sd_pon_optics, mean_poc_cell, sd_poc_cell, mean_pon_cell, sd_pon_cell, mean_cn:sd_c_chl) %>% 
+  distinct()
+```
+
+    ```
+
+############# 
+
+# CALCS & STATS
+
+############## 
+
+    ```{r,cell calcs, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+cells_data %>%
+  group_by(phyto, exp, source) %>%
+  # filter(exp %in% c("OL22-2", "OL22-3")) %>%
+  summarize(across(
+    .cols = mean_cells,
+    .fns = list(min = min, max = max),
+    na.rm = TRUE,
+    .names = "{fn}_{col}"
+  )) %>%
+  ungroup() %>%
+  view()
+```
+
+    ```
+
+    ```{r,frr calcs, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+# frr_data %>% 
+#   filter(exp %in% c("OL22-2", "OL22-3")) %>%
+#   # view() 
+#   group_by(phyto, exp) %>% 
+#   summarize(across(
+#     .cols = mean_Fv_Fm,
+#     .fns = list(min = min, max = max),
+#     na.rm = TRUE,
+#     .names = "{fn}_{col}"
+#   ))  %>% 
+#   # ungroup() %>% 
+#   group_by(phyto) %>% 
+#    summarize(across(
+#     .cols = min_mean_Fv_Fm:max_mean_Fv_Fm,
+#     .fns = list(mean = mean, sd = sd),
+#     na.rm = TRUE,
+#     .names = "{fn}_{col}"
+#   ))  %>% 
+#   ungroup() 
+```
+
+    ```
+
+    ```{r,cell composition calcs, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+# cell_comp_data %>%
+#   group_by(exp) %>%
+#   select(exp:plot_datetime, contains("chl")) %>%
+#   distinct() %>%
+#   view()
+  # filter(tp <= 7) %>%
+  # summarize(across(
+  #   .cols = mean_chl_cell,
+  #   # .fns = list(min = min, max = max),
+  #   .fns = list(mean = mean, sd = sd),
+  #   na.rm = TRUE,
+  #   .names = "{fn}_{col}"
+  # ))  %>%
+  # ungroup()
+
+
+# cell_comp_data %>%
+#   filter(exp %in% c("SYN22-4", "SYN22-5")) %>%
+#   select(exp_no, plot_datetime, mean_chl_cell) %>%
+#   distinct() %>%
+#   pivot_wider(names_from = exp_no, values_from = mean_chl_cell) %>%
+#     drop_na() %>%
+#   rename(exp1 = 2,
+#          exp2 = 3) %>%
+#   mutate(perc_diff = threadr::percentage_change(exp2, exp1)) %>%
+#  summarize(across(
+#    .cols = perc_diff,
+#    # .fns = list(min = min, max = max),
+#    .fns = list(mean = mean, sd = sd),
+#    na.rm = TRUE,
+#    .names = "{fn}_{col}"
+#  ))  %>%
+#  ungroup()
+```
+
+    ```
+
+    ```{r,pigment calcs, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+# pigs_data %>% 
+#   group_by(exp) %>% 
+#   summarize(across(
+#     .cols = ppc_chla:chlb_chla,
+#     .fns = list(min = min, max = max),
+#     # .fns = list(mean = mean, sd = sd),
+#     na.rm = TRUE,
+#     .names = "{fn}_{col}"
+#   ))  %>%
+#   ungroup()
+```
+
+    ```
+
+    ```{r, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+# optics_summary %>% 
+#   filter(exp %in% c("OL22-2", "OL22-3")) %>% 
+#   select(exp:wl, mean_ap, sd_ap, mean_cp, sd_cp, mean_bbp, sd_bbp, mean_bb_b, sd_bb_b) %>%
+#    # select(exp:wl,  mean_bbp, sd_bbp, mean_bb_b, sd_bb_b) %>% 
+#   # filter(wl == 470) %>% 
+#   # view()
+#   group_by(exp, wl) %>%
+#   # group_by(wl) %>% 
+#   # group_by(tp) %>% 
+#   # filter(between(tp, 5,9)) %>% 
+#   summarize(across(
+#     .cols = c(mean_ap, mean_cp, mean_bbp, mean_bb_b),
+#     .fns = list(min = min, max = max),
+#     # .fns = list(mean = mean, sd = sd),
+#     na.rm = TRUE,
+#     .names = "{fn}_{col}"
+#   ))  %>%
+#   ungroup()
+```
+
+    ```
+
+    ```{r,tidy data for tests, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+stats_data <- optics_summary %>% 
+  left_join(., cell_comp_data %>% select(1:5, mean_cn, mean_chl_cell, mean_c_chl)) %>% 
+  left_join(., fcm_data %>% select(1:4, mean_fsc, mean_ssc, mean_red)) %>% 
+  left_join(., frr_data) %>% 
+  left_join(., pigs_data %>% select(1:3, 5, 11:15)) %>% 
+  select(-contains("sd")) %>% 
+  mutate(phyto = case_when(phyto == "italic('O. lucimarinus')" ~ "o_lucimarinus",
+                           phyto ==  "italic('Synechococcus ') (WH8102)" ~ "synechococcus",
+                           phyto == "italic('T. pseudonana')" ~ "t_pseudonana"))
+```
+
+    ```
+
+    ```{r,summary stats by experiment, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+summary_exp_stats <- stats_data %>% 
+  group_by(phyto, exp, wl) %>% 
+  get_summary_stats(mean_cells:chlb_chla)
+```
+
+    ```
+
+    ```{r,summary stats by phyto and wl, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+summary_phyto_stats <- stats_data %>% 
+  group_by(phyto, wl) %>% 
+  get_summary_stats(mean_cells:chlb_chla)
+```
+
+    ```
+
+    ```{r,tp stats, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+tp_stats <- stats_data %>% 
+  group_by(phyto, wl) %>% 
+  filter(phyto == "t_pseudonana") %>%
+  cor_test(vars = c("mean_ap", "mean_cp", "mean_bbp", "mean_bb_b"), vars2 = c("mean_ap", "mean_cp", "mean_bbp", "mean_bb_b", "mean_cells", "mean_chl_line_height", "mean_chl_cell", "mean_poc_optics", "mean_poc_cell","mean_cn", "mean_c_chl", "mean_fsc", "mean_ssc", "ppc_chla", "psc_chla", "mean_red", "mean_Fv_Fm"), use = "pairwise.complete.obs", method = "spearman") %>% 
+    # filter(p < 0.05) %>% 
+  arrange(phyto, var1,  var2, wl, cor)
+```
+
+    ```
+
+    ```{r,syn stats, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+syn_stats <- stats_data %>% 
+  group_by(phyto, wl) %>% 
+  filter(phyto == "synechococcus") %>%
+  cor_test(vars = c("mean_ap", "mean_cp", "mean_bbp", "mean_bb_b"), vars2 = c("mean_ap", "mean_cp", "mean_bbp", "mean_bb_b", "mean_cells", "mean_chl_line_height", "mean_chl_cell", "mean_poc_optics", "mean_poc_cell","mean_cn", "mean_c_chl", "mean_fsc", "mean_ssc",  "pub_peb", "pe_chla", "mean_red", "mean_Fv_Fm"), use = "pairwise.complete.obs", method = "spearman") %>% 
+    # filter(p < 0.05) %>% 
+  arrange(phyto, var1,  var2, wl, cor)
+```
+
+    ```
+
+    ```{r,ol stats, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+ol_stats <- stats_data %>% 
+  group_by(phyto, wl) %>% 
+  filter(phyto == "o_lucimarinus") %>%
+  cor_test(vars = c("mean_ap", "mean_cp", "mean_bbp", "mean_bb_b"), vars2 = c("mean_ap", "mean_cp", "mean_bbp", "mean_bb_b", "mean_cells", "mean_chl_line_height", "mean_chl_cell", "mean_poc_optics", "mean_poc_cell","mean_cn", "mean_c_chl", "mean_fsc", "mean_ssc", "ppc_chla", "chlb_chla", "mean_red", "mean_Fv_Fm"), use = "pairwise.complete.obs", method = "spearman") %>%
+  # filter(p < 0.05) %>% 
+  arrange(phyto, var1,  var2, wl, cor)
+```
+
+    ```
+
+    ```{r,combine stats, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+levels = c("ap", "cp", "bbp", "bb_b")
+
+levels2 = c("ap", "cp", "bbp", "bb_b",  "cells", "fsc", "ssc", "poc_optics", "poc_cell", "cn", "c_chl", "chl_line_height", "chl_cell", "ppc_chla", "psc_chla", "chlb_chla", "pe_chla", "pub_peb", "Fv_Fm", "red")
+
+
+stats_table <- bind_rows(tp_stats, syn_stats, ol_stats) %>% 
+  # filter(!var1 == var2) %>%
+  mutate_if(., 
+                is.character, 
+                str_remove_all, 
+                pattern = "mean_") %>% 
+   arrange(phyto, factor(var1, levels = levels), factor(var2, levels = levels2), wl, cor) 
+  #   filter(!var1 == "ap" | !var2 %in%c("c_chl", "chl_line_height", "chl_cell", "ppc_chla", "psc_chla", "chlb_chla", "pe_chla", "pub_peb")) %>% 
+  # filter(!var1 == "bb_b" | !var2 == "cp") %>% 
+  # filter(!var1 == "cp" | !var2 == "bb_b") 
+```
+
+    ```
+
+    ```{r,save stats, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+write_csv(stats_table, "Correlations.csv")
+```
+
+    ```

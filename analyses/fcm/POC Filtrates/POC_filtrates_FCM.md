@@ -1,0 +1,581 @@
+FCM for POC filtrates
+================
+Nicholas Baetge
+Last compiled on 20 April, 2023
+
+- 
+
+<!-- -->
+
+    ```{r,load packages, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+library(flowCore)
+library(openCyto)
+library(ggcyto)
+library(tidyverse)
+library(hms)
+library(lubridate)
+library(purrr)
+library(janitor)
+```
+
+    ```
+
+- 
+
+<!-- -->
+
+    ```{r,custom theme for plots, wrapper = TRUE}
+
+``` r
+custom.theme <- theme(
+  legend.position = "top",
+  legend.title = element_text(size = 23),
+  legend.key.size = unit(0.7, "cm"),
+  legend.text = element_text(size = 23),
+  axis.title = element_text(size = 23, face = "bold"),
+  panel.spacing.x = unit(2, "cm"),
+  strip.text.x = element_text(size = 23, color = "black", face = "bold"),
+  strip.text.y = element_text(size = 23, color = "black", face = "bold"),
+  strip.background = element_rect(
+    color = "black",
+    fill = alpha('light grey', 0.4),
+    linewidth = 1.5,
+    linetype = "solid"
+  )
+)
+```
+
+    ```
+
+- 
+
+############# 
+
+# IMPORT & WRANGLE DATA
+
+############## 
+
+- 
+
+### import fcs files and metadata
+
+    ```{r,create metadata files, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+tp2_meta <-
+  read_csv("TP22-14_POC_IS.csv",
+           skip = 7,
+           locale = locale(encoding = "latin1")) %>%
+  select(1, 2, 3, 11, 12, 6, 9, 53, 58) %>%
+  clean_names() %>%
+  mutate(
+    work_list = gsub("C:/Documents and Settings/GTI/Desktop/TP2214/",
+                     "",
+                     work_list),
+    work_list = gsub(".csv", "", work_list)
+  ) %>%
+  rename(
+    well = 1,
+    sample = 2,
+    events = 3,
+    acq_date = 4,
+    acq_time = 5,
+    dil = 6,
+    vol = 7,
+    flow_rate = 8,
+    plate = 9
+  ) %>%
+  mutate_if(is.character, stringr::str_trim) %>%
+  separate(sample,
+           into = c("source", "bottle", "rep", "tp"),
+           sep = "_") %>%
+  group_by(source, bottle, rep, tp) %>%
+  mutate(
+    sample_time = round_hms(first(as_hms(acq_time)), digits = -2),
+    .after = acq_time,
+    acq_date = gsub("MAY", 5, acq_date),
+    date = dmy_hms(paste(acq_date, sample_time))
+  ) %>%
+  ungroup() %>%
+  select(plate, everything()) %>%
+  mutate(exp = "TP22-14", .before = "plate") 
+
+syn2_meta <-
+  read_csv("SYN22-5_POC_IS.csv",
+           skip = 7,
+           locale = locale(encoding = "latin1")) %>%
+  select(1, 2, 3, 11, 12, 6, 9, 53, 58) %>%
+  clean_names() %>%
+  mutate(
+    work_list = gsub(
+      "C:/Documents and Settings/GTI/Desktop/Nick Baetge/Syn/2022/8/SYN22-5/plate_maps/",
+      "",
+      work_list
+    ),
+    work_list = gsub(".csv", "", work_list)
+  ) %>%
+  rename(
+    well = 1,
+    sample = 2,
+    events = 3,
+    acq_date = 4,
+    acq_time = 5,
+    dil = 6,
+    vol = 7,
+    flow_rate = 8,
+    plate = 9
+  ) %>%
+  mutate_if(is.character, stringr::str_trim) %>%
+  separate(sample,
+           into = c("source", "bottle", "rep", "tp"),
+           sep = "_") %>%
+  group_by(source, bottle, rep, tp) %>%
+  mutate(
+    sample_time = round_hms(first(as_hms(acq_time)), digits = -2),
+    .after = acq_time,
+    acq_date = gsub("AUG", 8, acq_date),
+    date = dmy_hms(paste(acq_date, sample_time))
+  ) %>%
+  ungroup() %>%
+  select(plate, everything()) %>%
+  mutate(exp = "SYN22-5", .before = "plate") 
+
+ol2_meta <-
+  read_csv(
+    "OL22-3_POC_IS.csv",
+    skip = 7,
+    # locale = readr::locale(encoding = "latin1")
+  ) %>%
+  select(1,2,3,11,12,6,9,53, 58) %>%
+  clean_names() %>% 
+  mutate(work_list = gsub("C:/Documents and Settings/GTI/Desktop/Nick Baetge/OL/OL22-3/", "", work_list)) %>% 
+  mutate(work_list = gsub(".csv", "", work_list)) %>% 
+  rename(
+    well = 1,
+    sample = 2,
+    events = 3,
+    acq_date = 4,
+    acq_time = 5,
+    dil = 6,
+    vol = 7,
+    flow_rate = 8,
+    plate = 9
+  ) %>%
+   mutate_if(is.character, stringr::str_trim) %>% 
+   separate(sample,
+           into = c("source", "bottle", "rep", "tp"),
+           sep = "_") %>%
+  group_by(source, bottle, rep, tp) %>%
+  mutate(sample_time = round_hms(first(as_hms(acq_time)), digits = -2), .after = acq_time,
+         acq_date = gsub("DEC", 12, acq_date),
+         date = dmy_hms(paste(acq_date, sample_time))) %>%
+  ungroup() %>% 
+  select(plate, everything()) %>%
+  mutate(exp = "OL22-3", .before = "plate") %>% 
+  mutate_at(vars(acq_time, sample_time), as_hms)
+
+meta <- bind_rows(tp2_meta, syn2_meta, ol2_meta)
+```
+
+    ```
+
+We will only be gating/processing samples that acquired more than 300
+total events. Samples with events lower than that threshold will be
+considered to have a cell concentration that is inconsequential to
+estimating cell abundances on the POC filters.
+
+    ```{r,id fcs files to import, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+syn2_id <- syn2_meta %>% 
+  filter(events > 300) %>% 
+  select(plate, well) %>% 
+  mutate(file = paste("Wells", plate, well, sep = "-"),
+         file = paste(file, ".fcs", sep = "")) 
+
+ol2_id <- ol2_meta %>% 
+  filter(events > 300) %>% 
+  select(plate, well) %>% 
+  mutate(file = paste("Wells", plate, well, sep = "-"),
+         file = paste(file, ".fcs", sep = "")) 
+```
+
+    ```
+
+    ```{r,read in fcs files, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+syn2_fs <-
+  flowCore::read.flowSet(files = as_vector(syn2_id$file),
+                         path = "SYN22-5_POC_FCS/",
+                         pattern = ".fcs",
+                         emptyValue = F)
+ol2_fs <-
+  flowCore::read.flowSet(files = as_vector(ol2_id$file),
+                         path = "OL22-3_POC_FCS/",
+                         pattern = ".fcs",
+                         emptyValue = F)
+```
+
+    ```
+
+- 
+
+<!-- -->
+
+    ```{r,extract acquisition times, message=FALSE, wrapper = TRUE}
+
+``` r
+syn2_times <-
+  flowCore::flowSet_to_list(syn2_fs) %>% map(., pluck, "description", "$BTIM") %>% map(as_tibble) %>% bind_rows(., .id = "column_label") %>% rename(rowname = "column_label", acq_time = value) %>%
+  left_join(
+    .,
+    flowCore::flowSet_to_list(syn2_fs) %>% map(., pluck, "description", "$ETIM") %>% map(as_tibble) %>% bind_rows(., .id = "column_label") %>% rename(rowname = "column_label", end_time = value)
+  )
+
+ol2_times <-
+  flowCore::flowSet_to_list(ol2_fs) %>% map(., pluck, "description", "$BTIM") %>% map(as_tibble) %>% bind_rows(., .id = "column_label") %>% rename(rowname = "column_label", acq_time = value) %>%
+  left_join(
+    .,
+    flowCore::flowSet_to_list(ol2_fs) %>% map(., pluck, "description", "$ETIM") %>% map(as_tibble) %>% bind_rows(., .id = "column_label") %>% rename(rowname = "column_label", end_time = value)
+  )
+```
+
+    ```
+
+- 
+
+<!-- -->
+
+    ```{r,calculate acquisition volume, message=FALSE, wrapper = TRUE}
+
+``` r
+syn2_fs_data <- pData(syn2_fs) %>%
+  mutate(name = gsub(".fcs", "", name)) %>%
+separate(name, into = c("t1", "plate", "well"), sep = "-") %>%
+  select(-c(t1)) %>%
+  mutate_at(2, as.numeric) %>%
+  rownames_to_column() %>%
+  left_join(., syn2_times) %>%
+  left_join(., syn2_meta %>% select(-acq_time)) %>%
+  arrange(plate, well) %>%
+  group_by(source, bottle, rep, tp) %>%
+  mutate(fcm_rep = seq(1:n()), .after = tp) %>%
+  ungroup() %>% 
+  column_to_rownames(var = "rowname") %>%
+  relocate(c(acq_time, end_time), .after = sample_time) %>%
+  mutate_at(vars(acq_time, end_time), as_hms) %>%
+  mutate(record_time = as.numeric(end_time - acq_time),
+         calc_vol = flow_rate * record_time) %>%
+  rename(ins_vol = vol) %>% 
+  drop_na(exp)
+
+
+ol2_fs_data <- pData(ol2_fs) %>%
+  mutate(name = gsub(".fcs", "", name)) %>%
+  separate(name, into = c("t1", "plate", "well"), sep = "-") %>%
+  select(-c(t1)) %>%
+  mutate_at(2, as.numeric) %>%
+  rownames_to_column() %>%
+  left_join(., ol2_times) %>%
+  left_join(., ol2_meta %>% select(-acq_time)) %>%
+  arrange(plate, well) %>%
+  group_by(source, bottle, rep, tp) %>%
+  mutate(fcm_rep = seq(1:n()), .after = tp) %>%
+  ungroup() %>% 
+  column_to_rownames(var = "rowname") %>%
+  relocate(c(acq_time, end_time), .after = sample_time) %>%
+  mutate_at(vars(acq_time, end_time), as_hms) %>%
+  mutate(record_time = as.numeric(end_time - acq_time),
+         calc_vol = flow_rate * record_time) %>%
+  rename(ins_vol = vol)
+```
+
+    ```
+
+- 
+
+<!-- -->
+
+    ```{r,apply wrangled metadata to fs, wrapper = TRUE}
+
+``` r
+pData(syn2_fs) <- syn2_fs_data
+pData(ol2_fs) <- ol2_fs_data
+```
+
+    ```
+
+- 
+
+############# 
+
+# GATE CYTOGRAMS
+
+############## 
+
+- 
+
+<!-- -->
+
+    ```{r,list channels, wrapper = TRUE}
+
+``` r
+colnames(syn2_fs)
+```
+
+    ##  [1] "FSC-HLin" "SSC-HLin" "GRN-HLog" "YEL-HLog" "RED-HLog" "FSC-HLog"
+    ##  [7] "SSC-HLog" "GRN-HLin" "YEL-HLin" "RED-HLin" "TIME"     "GRN-A"   
+    ## [13] "GRN-ALog" "GRN-W"
+
+    ```
+
+- 
+
+#### synechococcus
+
+    ```{r,syn1 root, wrapper = TRUE}
+
+``` r
+syn2_gs <- flowWorkspace::GatingSet(syn2_fs)
+
+syn2_root <- gh_pop_get_data(syn2_gs[[20]], "root", returnType = "flowFrame")
+
+autoplot(syn2_root, "FSC-HLog") ; autoplot(syn2_root, "YEL-HLog") ; autoplot(syn2_root, "FSC-HLog", "YEL-HLog", bins = 300) ; autoplot(syn2_root, "FSC-HLog", "SSC-HLog", bins = 200) 
+```
+
+![](POC_filtrates_FCM_files/figure-gfm/syn1%20root-1.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/syn1%20root-2.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/syn1%20root-3.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/syn1%20root-4.png)<!-- -->
+
+    ```
+
+- 
+
+<!-- -->
+
+    ```{r,syn gates, message=FALSE, warning=FALSE}
+
+``` r
+gt_syn <- gatingTemplate("SYN_Gating.csv")
+gt_gating(gt_syn, syn2_gs)
+```
+
+    ```
+
+- 
+
+<!-- -->
+
+    ```{r,syn1 cells, wrapper = TRUE}
+
+``` r
+syn2_cells <- gh_pop_get_data(syn2_gs[[20]], "cells", returnType = "flowFrame")
+
+autoplot(syn2_cells, "FSC-HLog") ; autoplot(syn2_cells, "YEL-HLog") ; autoplot(syn2_cells, "RED-HLog") ; autoplot(syn2_cells, "FSC-HLog", "YEL-HLog", bins = 200) ; autoplot(syn2_cells, "FSC-HLog", "SSC-HLog", bins = 200) 
+```
+
+![](POC_filtrates_FCM_files/figure-gfm/syn1%20cells-1.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/syn1%20cells-2.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/syn1%20cells-3.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/syn1%20cells-4.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/syn1%20cells-5.png)<!-- -->
+
+    ```
+
+- 
+
+#### ostreococcus
+
+    ```{r,ol1 root, wrapper = TRUE}
+
+``` r
+ol2_gs <- flowWorkspace::GatingSet(ol2_fs)
+
+ol2_root <- gh_pop_get_data(ol2_gs[[5]], "root", returnType = "flowFrame")
+
+autoplot(ol2_root, "FSC-HLog") ; autoplot(ol2_root, "RED-HLog") ;  autoplot(ol2_root, "GRN-HLog") ;  autoplot(ol2_root, "YEL-HLog") ; autoplot(ol2_root, "GRN-HLog", "YEL-HLog", bins = 300) ; autoplot(ol2_root, "FSC-HLog", "SSC-HLog", bins = 200)
+```
+
+![](POC_filtrates_FCM_files/figure-gfm/ol1%20root-1.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/ol1%20root-2.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/ol1%20root-3.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/ol1%20root-4.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/ol1%20root-5.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/ol1%20root-6.png)<!-- -->
+
+    ```
+
+``` r
+g <- openCyto:::gate_flowclust_2d(ol2_root, xChannel = "GRN-HLog", yChannel = "YEL-HLog", K=1, quantile=0.9)
+```
+
+    ## The prior specification has no effect when usePrior=no
+
+    ## Using the serial version of flowClust
+
+``` r
+p <- autoplot(ol2_root, "GRN-HLog", "YEL-HLog", bins = 200)
+p+geom_gate(g)
+```
+
+![](POC_filtrates_FCM_files/figure-gfm/ol%20gate%20plot-1.png)<!-- -->
+
+- 
+
+<!-- -->
+
+    ```{r,ol gates, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+gt_ol <- gatingTemplate("OL_Gating.csv")
+gt_gating(gt_ol, ol2_gs)
+```
+
+    ```
+
+- 
+
+<!-- -->
+
+    ```{r,ol2 cells, wrapper = TRUE}
+
+``` r
+ol2_cells <- gh_pop_get_data(ol2_gs[[12]], "cells", returnType = "flowFrame")
+
+autoplot(ol2_cells, "FSC-HLog") ; autoplot(ol2_cells, "SSC-HLog") ;  autoplot(ol2_cells, "RED-HLog") ; autoplot(ol2_cells, "GRN-HLog") ;  autoplot(ol2_cells, "YEL-HLog") ; autoplot(ol2_cells, "GRN-HLog", "YEL-HLog", bins = 300) ; autoplot(ol2_cells, "FSC-HLog", "SSC-HLog", bins = 200)
+```
+
+![](POC_filtrates_FCM_files/figure-gfm/ol2%20cells-1.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/ol2%20cells-2.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/ol2%20cells-3.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/ol2%20cells-4.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/ol2%20cells-5.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/ol2%20cells-6.png)<!-- -->![](POC_filtrates_FCM_files/figure-gfm/ol2%20cells-7.png)<!-- -->
+
+    ```
+
+############# 
+
+# CALCULATE ABUNDANCES
+
+############## 
+
+- 
+
+<!-- -->
+
+    ```{r,merge data and calculate abundances for OL and SYN, message=FALSE, wrapper = TRUE}
+
+``` r
+#should be able to use gs_pop_get_count_with_metadata, but doesn't work sometimes
+ol2_abund <- gs_pop_get_count_fast(ol2_gs)  %>%
+  left_join(., pData(ol2_gs)) %>%
+  filter(Population == "/nondebris/cells")%>%
+  select(
+    name,
+    plate,
+    well,
+    source,
+    bottle,
+    tp,
+    rep,
+    fcm_rep,
+    date,
+    acq_date,
+    acq_time,
+    end_time,
+    sample_time,
+    record_time,
+    flow_rate,
+    calc_vol,
+    ParentCount,
+    Count
+  ) %>%
+  mutate_at(vars(3, 6, 8, 14:18), as.numeric) %>%
+  filter(!ParentCount < 100) %>%
+  mutate_at(vars(sample_time, acq_time), as_hms) %>%
+  mutate_at(vars(acq_date), dmy) %>%
+  mutate_at(vars(date), ymd_hms) %>%
+  arrange(source, bottle, tp, rep, fcm_rep) %>%
+  mutate(cells = round((Count / calc_vol) * 1000)) %>%
+  mutate(
+    event_s = ParentCount / as.numeric(record_time),
+    gate_event_s = Count / as.numeric(record_time),
+    gate_percent = (Count / ParentCount) * 100
+  ) %>%
+  group_by(source, bottle, tp, rep) %>%
+  mutate(mean_cells = round(mean(cells))) %>% 
+  ungroup() %>% 
+  mutate(exp = "OL22-3")
+
+syn2_abund <- gs_pop_get_count_fast(syn2_gs)  %>%
+  left_join(., pData(syn2_gs)) %>%
+  filter(Population == "/cells") %>%
+  select(
+    name,
+    plate,
+    well,
+    source,
+    bottle,
+    tp,
+    rep,
+    fcm_rep,
+    date,
+    acq_date,
+    acq_time,
+    end_time,
+    sample_time,
+    record_time,
+    flow_rate,
+    calc_vol,
+    ParentCount,
+    Count
+  ) %>%
+  mutate_at(vars(3, 6, 8, 14:18), as.numeric) %>%
+  filter(!ParentCount < 100) %>%
+  mutate_at(vars(sample_time, acq_time), as_hms) %>%
+  mutate_at(vars(acq_date), dmy) %>%
+  mutate_at(vars(date), ymd_hms) %>%
+  arrange(source, bottle, tp, rep, fcm_rep) %>%
+  mutate(cells = round((Count / calc_vol) * 1000)) %>%
+  mutate(
+    event_s = ParentCount / as.numeric(record_time),
+    gate_event_s = Count / as.numeric(record_time),
+    gate_percent = (Count / ParentCount) * 100
+  ) %>%
+  group_by(source, bottle, tp, rep) %>%
+  mutate(mean_cells = round(mean(cells))) %>% 
+  ungroup() %>% 
+  mutate(exp = "SYN22-5")
+```
+
+    ```
+
+- 
+
+<!-- -->
+
+    ```{r,combine  data, message=FALSE, warning=FALSE, wrapper = TRUE}
+
+``` r
+filtrate_data <- bind_rows(syn2_abund, ol2_abund) %>% 
+  select(exp, bottle:rep, mean_cells) %>% 
+  distinct() %>% 
+  left_join(meta %>% select(exp, bottle, rep, tp) %>% mutate_at(vars(tp), as.numeric), .) %>% 
+  distinct() %>% 
+  rename(filt = rep, 
+         filtrate_cells = mean_cells) 
+```
+
+    ```
+
+- 
+
+########################### 
+
+# SAVE DATA
+
+########################### 
+
+- 
+
+<!-- -->
+
+    ```{r,write csv, wrapper = TRUE}
+
+``` r
+write_csv(filtrate_data, "processed_poc_filtrate_data.csv")
+```
+
+    ```
+
+- 
+
+END

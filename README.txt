@@ -1,10 +1,11 @@
 This repository was created to share the data and analyses used for :
 
-Baetge, N., Halesy, K., Graff, J.R., Ver Wey, B., Westberry, T., Appel, A.E., Bourdin, G., Begouen Demeaux, C., Boss, E., Behrenfeld, M.J. (in submission). Bio-optical properties of cultured phytoplankton over complete diel cycles. 
+Baetge, N., Halesy, K., Graff, J.R., Ver Wey, B., Westberry, T., Appel, A.E., Bourdin, G., Begouen Demeaux, C., Boss, E., Behrenfeld, M.J. (in review). Bio-optical properties of cultured phytoplankton over complete diel cycles. 
 
 All code and data provided in this repository are freely available for use. Please do not hesitate to contact me if you have questions or comments or if you find errors/inaccuracies.
 
-To run R scripts using R Studio:
+
+R scripts used in analyses are found in the "analyses" folder and can be run using R Studio. The analyses can be replicated as follows:
 
 -Clone repository
 
