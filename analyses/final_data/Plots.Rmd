@@ -272,12 +272,14 @@ abund_data <- sf %>%
   select(exp, exp_no, phyto, source, tp, plot_datetime, mean_cells, sd_cells) %>% 
   distinct() %>% 
   filter(!exp == "OL22-3" | !tp == 4) %>% 
-  mutate_at(vars(mean_cells, sd_cells), ~ . * 1E6) 
+  mutate_at(vars(mean_cells, sd_cells), ~ . * 1E6) %>% 
+  mutate(source = case_when(source == "Culture" ~ "Directly~from~culture",
+                            source == "Optics" ~ "Diluted~'in'~optical~sampling~system"))
 ```
 
 -
 
-```{r 1-cells plot, fig.width=12, fig.asp=1.4, message=FALSE, warning=FALSE, wrapper = TRUE}
+```{r 1-cells plot, fig.width=16, fig.asp=1.4, message=FALSE, warning=FALSE, wrapper = TRUE}
 scientific_10 <- function(x) {
   parse(text=gsub("e\\+*", " %*% 10^", scales::scientific_format()(x)))
 }
@@ -367,7 +369,7 @@ cells <-  ggplot( data = abund_data[!is.na(abund_data$mean_cells),]) +
   ) +
   guides(color = "none", fill = guide_legend(override.aes = list(shape = 21))) +
   theme_linedraw(21) +
-  ggh4x::facet_grid2(factor(phyto, levels = unique(abund_data$phyto))~source,
+  ggh4x::facet_grid2(factor(phyto, levels = unique(abund_data$phyto))~factor(source, levels = unique(abund_data$source)),
              scales = "free_y",
              independent = "y",
              labeller = label_parsed) +
@@ -914,7 +916,8 @@ optics_data <- bf %>%
          c_poc = cp / poc_optics,
          bb_star = bbp /  (chl_line_height / 1E3),
          sigma_bb = (bbp / cells) * 10^12,
-         bb_poc = bbp / poc_optics
+         bb_poc = bbp / poc_optics,
+         g = bbp / (ap + bbp)
          )
 ```
 
@@ -924,7 +927,7 @@ optics_data <- bf %>%
 optics_summary <- optics_data %>% 
   group_by(exp, exp_no, phyto, tp, plot_datetime,  wl) %>% 
    summarize(across(
-    .cols = cells:bb_poc,
+    .cols = cells:g,
     .fns = list(mean = mean, sd = sd),
     na.rm = TRUE,
     .names = "{fn}_{col}"
@@ -2213,6 +2216,92 @@ cp.plot <- supp_data %>%
 ```
 
 
+```{r g, fig.asp=0.5, fig.width=16, message=FALSE, warning=FALSE, wrapper=TRUE}
+g <-  ggplot() +
+  geom_rect(
+    data = shade,
+    aes(
+      xmin = dusk,
+      xmax = dawn,
+      ymin = bottom,
+      ymax = top
+    ),
+    fill = 'light grey',
+    alpha = 0.4
+  ) +
+   geom_rect(
+    data = shade.pre,
+    aes(
+      xmin = dusk,
+      xmax = dawn,
+      ymin = bottom,
+      ymax = top
+    ),
+    fill = 'light grey',
+    alpha = 0.4
+  ) +
+  geom_errorbar(
+    data = optics_summary,
+    aes(
+      x = plot_datetime,
+      y = mean_g,
+      ymin = mean_g - sd_g,
+      ymax = mean_g + sd_g,
+      color = wl,
+      group = interaction(phyto, exp_no, wl)
+    ),
+    width = 2000,
+    alpha = 0.7
+  ) +
+  geom_line(
+    data = optics_summary,
+    aes(
+      x = plot_datetime,
+      y = mean_g,
+      color = wl,
+      linetype = as.character(exp_no),
+      group = interaction(phyto, exp_no, wl)
+    ),
+    alpha = 0.7,
+    size = 1
+  ) +
+  geom_point(
+    data = optics_summary,
+    aes(
+      x = plot_datetime,
+      y = mean_g,
+      fill = wl,
+      group = interaction(phyto, exp_no, wl)
+    ),
+    shape = 21,
+    color = "black",
+    size = 4
+  ) +
+  scale_x_datetime(
+    date_breaks = "4 hours",
+    date_labels = "%H",
+    limits = c(ymd_hms("2022-11-27 6:00:00"),
+               ymd_hms("2022-11-28 16:00:00"))
+  ) +
+  scale_shape_manual(values = c(21, 22)) +
+  scale_color_manual(values = bb3.colors) +
+  scale_fill_manual(values = bb3.colors, labels = scales::parse_format()) +
+  labs(x =  "Hour",
+       y = expression(bold("Gordon parameter"~italic((g)))),
+       fill = expression(bold(Wavelength ~ (nm))),
+       linetype = expression(bold(Experiment))) +
+  facet_wrap(~ factor(phyto, levels = unique(optics_summary$phyto)),
+              scales = "free_y",
+              labeller = label_parsed) +
+  # facet_wrap( ~ factor(phyto, levels = unique(optics_summary$phyto)),
+  #             scales = "free_y",
+  #             labeller = label_parsed) +
+  guides(color = "none", fill = guide_legend(override.aes = list(shape = 21))) +
+  theme_linedraw(21) +
+  custom.theme 
+
+g
+```
 
 
 
