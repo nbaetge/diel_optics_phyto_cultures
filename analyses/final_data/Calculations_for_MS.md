@@ -1,7 +1,7 @@
 Calculations_for_MS
 ================
 Nicholas Baetge
-Last compiled on 26 April, 2023
+Last compiled on 13 November, 2023
 
 - 
 
@@ -25,8 +25,8 @@ library(rstatix)
     ```{r,import data,  message=FALSE, warning=FALSE, wrapper = TRUE}
 
 ``` r
-bf <- read_csv("FINAL_BOTTLE.csv")
-sf <- read_csv("FINAL_SUMMARY.csv")
+bf <- read_csv("FINAL_BOTTLE_11102023.csv")
+sf <- read_csv("FINAL_SUMMARY_11102023.csv")
 gaus <- read_csv("Gaussian_Decompositions.csv")
 pigs <- read_csv("Pigment_Ratios.csv")
 pf <- read_csv("PAR.csv")
@@ -246,25 +246,55 @@ cells_data %>%
     ```{r, message=FALSE, warning=FALSE, wrapper = TRUE}
 
 ``` r
-# optics_summary %>% 
-#   filter(exp %in% c("OL22-2", "OL22-3")) %>% 
-#   select(exp:wl, mean_ap, sd_ap, mean_cp, sd_cp, mean_bbp, sd_bbp, mean_bb_b, sd_bb_b) %>%
-#    # select(exp:wl,  mean_bbp, sd_bbp, mean_bb_b, sd_bb_b) %>% 
-#   # filter(wl == 470) %>% 
-#   # view()
-#   group_by(exp, wl) %>%
-#   # group_by(wl) %>% 
-#   # group_by(tp) %>% 
-#   # filter(between(tp, 5,9)) %>% 
-#   summarize(across(
-#     .cols = c(mean_ap, mean_cp, mean_bbp, mean_bb_b),
-#     .fns = list(min = min, max = max),
-#     # .fns = list(mean = mean, sd = sd),
-#     na.rm = TRUE,
-#     .names = "{fn}_{col}"
-#   ))  %>%
-#   ungroup()
+optics_summary %>%
+  # filter(exp %in% c("OL22-2", "OL22-3")) %>%
+  # filter(!between(plot_datetime, as_datetime("2022-11-27 21:00:00 UTC"), as_datetime("2022-11-28 07:00:00 UTC" )) ) %>% 
+  select(exp:wl, mean_ap, sd_ap, mean_cp, sd_cp, mean_bbp, sd_bbp, mean_bb_b, sd_bb_b) %>%
+   # select(exp:wl,  mean_bbp, sd_bbp, mean_bb_b, sd_bb_b) %>%
+  # filter(wl == 470) %>%
+  # view()
+  group_by(exp, wl) %>%
+  # group_by(wl) %>%
+  # group_by(tp) %>%
+  # filter(between(tp, 5,9)) %>%
+  summarize(across(
+    .cols = c(mean_ap, mean_cp, mean_bbp, mean_bb_b),
+    .fns = list(min = min, max = max),
+    # .fns = list(mean = mean, sd = sd),
+    na.rm = TRUE,
+    .names = "{fn}_{col}"
+  ))  %>%
+  mutate(min_mean_ap = abs(min_mean_ap)) %>% 
+  mutate(ap_fc = max_mean_ap/min_mean_ap,
+         cp_fc = max_mean_cp/min_mean_cp,
+         bbp_fc = max_mean_bbp/min_mean_bbp,
+         ap_pc = threadr::percentage_change(min_mean_ap,max_mean_ap),
+         cp_pc = threadr::percentage_change(min_mean_cp,max_mean_cp),
+         bbp_pc = threadr::percentage_change(min_mean_bbp,max_mean_bbp))  %>% 
+  ungroup() 
 ```
+
+    ## # A tibble: 15 × 16
+    ##    exp     wl    min_mean_ap max_mean_ap min_mean_cp max_mean_cp min_mean_bbp
+    ##    <chr>   <chr>       <dbl>       <dbl>       <dbl>       <dbl>        <dbl>
+    ##  1 OL22-2  470        0.0979      0.121        0.554       0.731     0.00353 
+    ##  2 OL22-2  532        0.0339      0.0427       0.427       0.565     0.00419 
+    ##  3 OL22-2  660        0.0268      0.0335       0.291       0.383     0.00292 
+    ##  4 OL22-3  470        0.0992      0.175        0.459       0.789     0.00276 
+    ##  5 OL22-3  532        0.0330      0.0567       0.345       0.595     0.00322 
+    ##  6 OL22-3  660        0.0294      0.0515       0.229       0.393     0.00232 
+    ##  7 SYN22-4 470        0.115       0.198        0.649       1.24      0.00164 
+    ##  8 SYN22-4 532        0.0505      0.0831       0.501       0.969     0.00237 
+    ##  9 SYN22-4 660        0.0271      0.0470       0.330       0.634     0.00261 
+    ## 10 SYN22-5 470        0.162       0.278        0.916       1.72      0.00163 
+    ## 11 SYN22-5 532        0.0709      0.115        0.696       1.34      0.00264 
+    ## 12 SYN22-5 660        0.0409      0.0666       0.441       0.861     0.00299 
+    ## 13 TP22-14 470        0.0252      0.0557       0.232       0.570     0.000950
+    ## 14 TP22-14 532        0.0141      0.0267       0.215       0.596     0.000850
+    ## 15 TP22-14 660        0.0125      0.0266       0.162       0.543     0.000655
+    ## # ℹ 9 more variables: max_mean_bbp <dbl>, min_mean_bb_b <dbl>,
+    ## #   max_mean_bb_b <dbl>, ap_fc <dbl>, cp_fc <dbl>, bbp_fc <dbl>, ap_pc <dbl>,
+    ## #   cp_pc <dbl>, bbp_pc <dbl>
 
     ```
 
@@ -304,14 +334,37 @@ summary_phyto_stats <- stats_data %>%
 
     ```
 
+``` r
+stats_data %>% 
+  group_by( wl) %>% 
+  get_summary_stats(mean_cells:chlb_chla)
+```
+
+    ## # A tibble: 96 × 14
+    ##    wl    variable         n     min      max   median       q1       q3      iqr
+    ##    <chr> <fct>        <dbl>   <dbl>    <dbl>    <dbl>    <dbl>    <dbl>    <dbl>
+    ##  1 470   mean_cells      66 7.25e+9 1.12e+12 1.29e+11 5.04e+10 5.68e+11 5.17e+11
+    ##  2 470   mean_chl_li…    67 1.93e+0 5.83e+ 0 3.19e+ 0 2.67e+ 0 4.06e+ 0 1.39e+ 0
+    ##  3 470   mean_poc_op…    41 2.8 e-2 4.95e- 1 1.96e- 1 1.08e- 1 3.84e- 1 2.76e- 1
+    ##  4 470   mean_pon_op…    41 9   e-3 9   e- 2 3.8 e- 2 1.4 e- 2 7   e- 2 5.5 e- 2
+    ##  5 470   mean_cp         67 2.32e-1 1.72e+ 0 7.17e- 1 5.7 e- 1 1.08e+ 0 5.14e- 1
+    ##  6 470   mean_ap         67 2.5 e-2 2.78e- 1 1.48e- 1 1.03e- 1 1.75e- 1 7.2 e- 2
+    ##  7 470   mean_bp         67 2.07e-1 1.48e+ 0 5.87e- 1 4.86e- 1 9.19e- 1 4.33e- 1
+    ##  8 470   mean_bbp        67 1   e-3 5   e- 3 3   e- 3 2   e- 3 4   e- 3 2   e- 3
+    ##  9 470   mean_bb_b       67 2   e-3 8   e- 3 4   e- 3 3   e- 3 7   e- 3 4   e- 3
+    ## 10 470   mean_chl_ce…    66 3.59e+0 3.03e+ 2 4.13e+ 1 5.43e+ 0 7.14e+ 1 6.59e+ 1
+    ## # ℹ 86 more rows
+    ## # ℹ 5 more variables: mad <dbl>, mean <dbl>, sd <dbl>, se <dbl>, ci <dbl>
+
     ```{r,tp stats, message=FALSE, warning=FALSE, wrapper = TRUE}
 
 ``` r
 tp_stats <- stats_data %>% 
-  group_by(phyto, wl) %>% 
+   # filter(tp > 2) %>%
+   group_by(phyto, wl) %>% 
   filter(phyto == "t_pseudonana") %>%
   cor_test(vars = c("mean_ap", "mean_cp", "mean_bbp", "mean_bb_b"), vars2 = c("mean_ap", "mean_cp", "mean_bbp", "mean_bb_b", "mean_cells", "mean_chl_line_height", "mean_chl_cell", "mean_poc_optics", "mean_poc_cell","mean_cn", "mean_c_chl", "mean_fsc", "mean_ssc", "ppc_chla", "psc_chla", "mean_red", "mean_Fv_Fm"), use = "pairwise.complete.obs", method = "spearman") %>% 
-    # filter(p < 0.05) %>% 
+    # filter(p < 0.05) %>%
   arrange(phyto, var1,  var2, wl, cor)
 ```
 

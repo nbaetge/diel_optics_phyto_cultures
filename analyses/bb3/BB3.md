@@ -1,7 +1,7 @@
 BB3
 ================
 Nicholas Baetge
-Last compiled on 21 April, 2023
+Last compiled on 10 November, 2023
 
 - 
 
@@ -62,7 +62,7 @@ custom.theme <- theme(
 ``` r
 #data for bb wavelengths
 acs_bottle <-
-  read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/acs/processed_acs_bottle.csv") %>% 
+  read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/acs/processed_acs_bottle_11102023.csv") %>% 
   filter(wl %in% c(470, 532, 660)) %>%
   select(-c(c_se, a_se))
 ```
@@ -73,8 +73,8 @@ acs_bottle <-
 
 ``` r
 #summary files
-acs_summary <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/acs/processed_acs_summary.csv") %>% select(-datetime)
-fcm_summary <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/fcm/Cultures_and_Optics/processed_fcm_summary.csv") %>% 
+acs_summary <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/acs/processed_acs_summary_11102023.csv") %>% select(-datetime)
+fcm_summary <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/fcm/Cultures_and_Optics/processed_fcm_summary.csv") %>% 
   filter(source == "Optics") %>% 
   select(-datetime)
 
@@ -467,8 +467,8 @@ bb3_sum <- bbp %>%
     ```{r,save data}
 
 ``` r
-write_csv(bbp, "processed_bb3_bottle.csv")
-write_csv(bb3_sum, "processed_bb3_summary.csv")
+write_csv(bbp, "processed_bb3_bottle_11102023.csv")
+write_csv(bb3_sum, "processed_bb3_summary_11102023.csv")
 ```
 
     ```

@@ -1,7 +1,7 @@
-Plots by parameter
+Plots
 ================
 Nicholas Baetge
-Last compiled on 09 November, 2023
+Last compiled on 13 November, 2023
 
 - 
 
@@ -13,6 +13,7 @@ Last compiled on 09 November, 2023
 library(tidyverse)
 library(patchwork)
 library(lubridate)
+library(rho)
 ```
 
     ```
@@ -28,8 +29,8 @@ library(lubridate)
     ```{r,read data, message=FALSE, warning=FALSE, wrapper = TRUE}
 
 ``` r
-bf <- read_csv("FINAL_BOTTLE.csv")
-sf <- read_csv("FINAL_SUMMARY.csv")
+bf <- read_csv("FINAL_BOTTLE_11102023.csv")
+sf <- read_csv("FINAL_SUMMARY_11102023.csv")
 gaus <- read_csv("Gaussian_Decompositions.csv")
 pigs <- read_csv("Pigment_Ratios.csv")
 pf <- read_csv("PAR.csv") %>% 
@@ -944,6 +945,21 @@ fvfm &
 
 ########################### 
 
+``` r
+# saline water
+
+swa470 <- rho::a_water(470, S = 35, Tc = 24)
+swa532 <- rho::a_water(532, S = 35, Tc = 24)
+swa660 <- rho::a_water(660, S = 35, Tc = 24)
+
+swbb470 <- (rho::b_water(470, S = 35, Tc = 24))/2
+swbb532 <- (rho::b_water(532, S = 35, Tc = 24))/2
+swbb660 <- (rho::b_water(660, S = 35, Tc = 24))/2
+
+sw <- tibble(wl = c(470, 532, 660), sw_a = c(swa470, swa532, swa660), sw_bb = c(swbb470, swbb532, swbb660)) %>% 
+  mutate(wl = as.character(wl))
+```
+
     ```{r,subset optics bottle data}
 
 ``` r
@@ -954,6 +970,7 @@ optics_data <- bf %>%
   mutate_at(vars(poc_optics, pon_optics), ~ . / 1E3) %>% # convert from mg/m3 to g/m3
   mutate_at(vars(wl), as.character) %>%
   distinct() %>% 
+  left_join(., sw) %>% 
   mutate(chl_cell = (chl_line_height/cells) * 10^12, # mg chl/cell to fg chl per cell
          poc_cell = (poc_optics/cells) * 10^12, #g/cell convert to pg c per cell
          pon_cell = (pon_optics/cells) * 10^12, #g/cell convert to pg n per cell
@@ -967,9 +984,11 @@ optics_data <- bf %>%
          bb_star = bbp /  (chl_line_height / 1E3),
          sigma_bb = (bbp / cells) * 10^12,
          bb_poc = bbp / poc_optics,
-         g = bbp / (ap + bbp)
+         g = (bbp + sw_bb) / (ap + sw_a + bbp + sw_bb)
          )
 ```
+
+    ## Joining with `by = join_by(wl)`
 
     ```
 
@@ -1123,285 +1142,6 @@ ggplot() +
 ```
 
 ![](Plots_files/figure-gfm/4-chl%20and%20poc%20plot-1.png)<!-- -->
-
-    ```
-
-- 
-
-############# 
-
-# PIGMENTS
-
-############## 
-
-- 
-
-``` r
-spec_decomp <- gaus %>%
-  filter(exp_no == 2, tp == 1) %>%
-  distinct() %>%
-  ggplot() +
-  geom_line(
-    aes(
-      x = wl,
-      y = ap,
-      color = spectra_label,
-      group = interaction(phyto, spectra,  exp_no)
-    ),
-    size = 1,
-    alpha = 0.7
-  ) +
-  labs(x = expression(bold(Wavelength ~ nm ^ -1)),
-        y = expression(bold(italic(a[p]) ~ (
-         m ^ -1))),
-       color = "") +
-  facet_wrap( ~ factor(phyto, levels = unique(gaus$phyto)),
-              # scales = "free_y",
-              labeller = label_parsed) +
-  scale_color_manual(values = gaus.colors) +
-  theme_linedraw(21) +
-  custom.theme 
-```
-
-- 
-
-``` r
-ratios.data <- pigs %>% 
-  filter(spectra %in% c("ppc_chla", "psc_chla", "ppc_chla", "pub_peb", "pe_chla", "chlb_chla")) %>% 
-  mutate(peak = ifelse(peak == Inf, NA, peak))
-
-tp_pigs <- ggplot() +
-  geom_rect(
-    data = shade,
-    aes(
-      xmin = dusk,
-      xmax = dawn,
-      ymin = bottom,
-      ymax = top
-    ),
-    fill = 'light grey',
-    alpha = 0.4
-  ) +
-   geom_rect(
-    data = shade.pre,
-    aes(
-      xmin = dusk,
-      xmax = dawn,
-      ymin = bottom,
-      ymax = top
-    ),
-    fill = 'light grey',
-    alpha = 0.4
-  ) +
-   geom_rect(
-    data = shade.pre,
-    aes(
-      xmin = dusk,
-      xmax = dawn,
-      ymin = bottom,
-      ymax = top
-    ),
-    fill = 'light grey',
-    alpha = 0.4
-  ) +
-  geom_line(
-    data = ratios.data %>% filter(phyto == "italic('T. pseudonana')" & spectra %in% c("ppc_chla", "psc_chla")),
-    aes(
-      x = plot_datetime,
-      y = peak,
-      linetype = as.character(exp_no),
-      group = interaction(phyto, exp_no, spectra)
-    ),
-   color = "black",
-    size = 1,
-    alpha = 0.7
-  ) +
-  geom_point(
-    data = ratios.data %>% filter(phyto == "italic('T. pseudonana')" & spectra %in% c("ppc_chla", "psc_chla")),
-    aes(x = plot_datetime,
-        y = peak,
-      group = interaction(phyto, exp_no, spectra)
-    ),
-    shape = 21,
-    size = 4,
-    fill = "black",
-    color = "black"
-  ) +
-  labs(x =  expression(bold(Hour)),
-       y = expression(bold(Ratio)),
-       shape = "",
-       fill = "",
-       linetype = "Experiment",
-       title = expression(italic(T.~pseudonana))) +
-  scale_x_datetime(
-    date_breaks = "4 hours",
-    date_labels = "%H",
-    limits = c(ymd_hms("2022-11-27 6:00:00"),
-               ymd_hms("2022-11-28 16:00:00"))
-  ) +
-  facet_wrap(~factor(spectra_label, levels = unique(ratios.data$spectra_label)),
-             scales = "free_y",
-              labeller = label_parsed) + 
-  scale_shape_manual(values = c(21, 22)) +
-  guides(color = "none", fill = guide_legend(override.aes = list(shape = 21))) +
-  theme_linedraw(21) +
-  custom.theme
-```
-
-- 
-
-``` r
-syn_pigs <- ggplot() +
-  geom_rect(
-    data = shade,
-    aes(
-      xmin = dusk,
-      xmax = dawn,
-      ymin = bottom,
-      ymax = top
-    ),
-    fill = 'light grey',
-    alpha = 0.4
-  ) +
-   geom_rect(
-    data = shade.pre,
-    aes(
-      xmin = dusk,
-      xmax = dawn,
-      ymin = bottom,
-      ymax = top
-    ),
-    fill = 'light grey',
-    alpha = 0.4
-  ) +
-  geom_line(
-    data = ratios.data %>% filter(phyto == "italic('Synechococcus ') (WH8102)" & spectra %in% c("pe_chla", "pub_peb")),
-    aes(
-      x = plot_datetime,
-      y = peak,
-      linetype = as.character(exp_no),
-      group = interaction(phyto, exp_no, spectra)
-    ),
-    size = 1,
-    alpha = 0.7,
-    color = "black"
-  ) +
-  geom_point(
-    data = ratios.data %>% filter(phyto == "italic('Synechococcus ') (WH8102)" & spectra %in% c("pe_chla", "pub_peb")),
-    aes(x = plot_datetime,
-        y = peak,
-      group = interaction(phyto, exp_no, spectra)
-    ),
-    shape = 21,
-    size = 4,
-    color = "black",
-    fill = "black"
-  ) +
-  labs(x =  expression(bold(Hour)),
-       y = expression(bold(Ratio)),
-       shape = "",
-       fill = "",
-       linetype = "Experiment",
-       title = expression(italic(Synechococcus~(WH8102)))) +
-  scale_x_datetime(
-    date_breaks = "4 hours",
-    date_labels = "%H",
-    limits = c(ymd_hms("2022-11-27 6:00:00"),
-               ymd_hms("2022-11-28 16:00:00"))
-  ) +
-  scale_shape_manual(values = c(21, 22)) +
- facet_wrap(~factor(spectra_label, levels = unique(ratios.data$spectra_label)),
-             scales = "free_y",
-              labeller = label_parsed) + 
-  guides(color = "none", fill = guide_legend(override.aes = list(shape = 21))) +
-  theme_linedraw(21) +
-  custom.theme
-```
-
-- 
-
-``` r
-ol_pigs <- ggplot() +
-  geom_rect(
-    data = shade,
-    aes(
-      xmin = dusk,
-      xmax = dawn,
-      ymin = bottom,
-      ymax = top
-    ),
-    fill = 'light grey',
-    alpha = 0.4
-  ) +
-   geom_rect(
-    data = shade.pre,
-    aes(
-      xmin = dusk,
-      xmax = dawn,
-      ymin = bottom,
-      ymax = top
-    ),
-    fill = 'light grey',
-    alpha = 0.4
-  ) +
-  geom_line(
-    data = ratios.data %>% filter(phyto == "italic('O. lucimarinus')" & spectra %in% c("ppc_chla", "chlb_chla")),
-    aes(
-      x = plot_datetime,
-      y = peak,
-      linetype = as.character(exp_no),
-      group = interaction(phyto, exp_no, spectra)
-    ),
-    color = "black",
-    size = 1,
-    alpha = 0.7
-  ) +
-  geom_point(
-    data = ratios.data %>% filter(phyto == "italic('O. lucimarinus')" & spectra %in% c("ppc_chla", "chlb_chla")),
-    aes(x = plot_datetime,
-        y = peak,
-      group = interaction(phyto, exp_no, spectra)
-    ),
-    shape = 21,
-    size = 4,
-    color = "black",
-    fill = "black"
-  ) +
-  labs(x =  expression(bold(Hour)),
-       y = expression(bold(Ratio)),
-       shape = "",
-       fill = "",
-       linetype = "Experiment",
-       title = expression(italic(O.~lucimarinus))) +
-  scale_x_datetime(
-    date_breaks = "4 hours",
-    date_labels = "%H",
-    limits = c(ymd_hms("2022-11-27 6:00:00"),
-               ymd_hms("2022-11-28 16:00:00"))
-  ) +
-  scale_shape_manual(values = c(21, 22)) +
-  facet_wrap(~factor(spectra_label, levels = unique(ratios.data$spectra_label)),
-             scales = "free_y",
-              labeller = label_parsed) + 
-  guides(color = "none", fill = guide_legend(override.aes = list(shape = 21))) +
-  theme_linedraw(21) +
-  custom.theme
-```
-
-- 
-
-<!-- -->
-
-    ```{r,5-pig ratios plot, fig.asp=1.4, fig.width=18, warning=FALSE, message=FALSE, wrapper = TRUE}
-
-``` r
-(tp_pigs + guides(linetype = "none") + labs(tag = "a") + theme(axis.title.x = element_blank())) / (syn_pigs + labs(tag = "b") + theme(axis.title.x = element_blank())) / (ol_pigs  + labs(tag = "c")) + plot_layout(guides = "collect", heights = c(1, 1, 1)) &
-    theme(legend.position = "bottom",
-           legend.box="vertical",
-        plot.tag = element_text(face = "bold"))
-```
-
-![](Plots_files/figure-gfm/5-pig%20ratios%20plot-1.png)<!-- -->
 
     ```
 
@@ -1797,7 +1537,7 @@ bbp.bb <-  ggplot() +
 
 <!-- -->
 
-    ```{r,6-bulk optics plot, fig.asp=1.4, fig.width=18, warning=FALSE, message=FALSE, wrapper = TRUE}
+    ```{r,5-bulk optics plot, fig.asp=1.4, fig.width=18, warning=FALSE, message=FALSE, wrapper = TRUE}
 
 ``` r
 (a + guides(fill = "none") + labs(tag = "a") + theme(axis.title.x = element_blank())) / (c + guides(fill = "none") + labs(tag = "b") + theme(axis.title.x = element_blank())) / (bb + guides(fill = "none")  + labs(tag = "c") + theme(axis.title.x = element_blank())) / (bbp.bb + labs(tag = "d")) + plot_layout(guides = "collect", heights = c(1, 1, 1, 1)) &
@@ -1805,7 +1545,7 @@ bbp.bb <-  ggplot() +
         plot.tag = element_text(face = "bold"))
 ```
 
-![](Plots_files/figure-gfm/6-bulk%20optics%20plot-1.png)<!-- -->
+![](Plots_files/figure-gfm/5-bulk%20optics%20plot-1.png)<!-- -->
 
     ```
 
@@ -1815,10 +1555,11 @@ bbp.bb <-  ggplot() +
 
 ########################### 
 
-    ```{r,7-correlations plot, fig.asp=1.2, fig.width=20, warning=FALSE, message=FALSE, wrapper = TRUE}
+    ```{r,6-correlations plot, fig.asp=1.2, fig.width=20, warning=FALSE, message=FALSE, wrapper = TRUE}
 
 ``` r
 corr <- read_csv("Correlations.csv") %>% 
+  filter(!var2 %in% c("ppc_chla", "chlb_chl_a", "pe_chla", "pub_peb", "psc_chla")) %>% 
   mutate(var3 = case_when(var1 == "ap" ~ "italic(a[p])",
                           var1 == "cp" ~ "italic(c[p])",
                           var1 == "bbp" ~ "italic(b[bp])",
@@ -1836,11 +1577,11 @@ corr <- read_csv("Correlations.csv") %>%
                           var2 == "c_chl" ~ "'*'~C:Chl",
                           var2 == "chl_line_height" ~ "paste('Chl-', italic('a'))",
                           var2 == "chl_cell" ~ "paste('*Chl-', italic('a'), ' per cell')",
-                          var2 ==  "ppc_chla" ~ "paste('*PPC:Chl-', italic('a'))",
-                          var2 ==  "psc_chla" ~ "paste('*PSC:Chl-', italic('a'))",
-                          var2 ==  "pe_chla" ~ "paste('*PE:Chl-', italic('a'))",
-                          var2 ==  "chlb_chla" ~ "paste('*Chl-', italic('b'),':Chl-', italic('a'))",
-                          var2 ==  "pub_peb" ~ "'*'~PUB:PEB",
+                          # var2 ==  "ppc_chla" ~ "paste('*PPC:Chl-', italic('a'))",
+                          # var2 ==  "psc_chla" ~ "paste('*PSC:Chl-', italic('a'))",
+                          # var2 ==  "pe_chla" ~ "paste('*PE:Chl-', italic('a'))",
+                          # var2 ==  "chlb_chla" ~ "paste('*Chl-', italic('b'),':Chl-', italic('a'))",
+                          # var2 ==  "pub_peb" ~ "'*'~PUB:PEB",
                           var2 == "Fv_Fm" ~ "paste('*F'[v], '/', 'F'[m])",
                           var2 == "red" ~ "'*'~Red~fluor."
                           ) ) %>% 
@@ -1876,7 +1617,7 @@ ggplot(data = corr, aes(factor(wl, levels = unique(corr$wl)), factor(var4, level
   theme(legend.position = "bottom", legend.key.width = unit(2.5, "cm"))
 ```
 
-![](Plots_files/figure-gfm/7-correlations%20plot-1.png)<!-- -->
+![](Plots_files/figure-gfm/6-correlations%20plot-1.png)<!-- -->
 
     ```
 
@@ -2205,7 +1946,7 @@ mass_sp_ol <- ggplot() +
 
 <!-- -->
 
-    ```{r,8-mass-specific optics plot, fig.asp=1.8, fig.width=18, warning=FALSE, message=FALSE, wrapper = TRUE}
+    ```{r,7-mass-specific optics plot, fig.asp=1.8, fig.width=18, warning=FALSE, message=FALSE, wrapper = TRUE}
 
 ``` r
 (mass_sp_tp + guides(fill = "none") + labs(tag = "a") + theme(axis.title.x = element_blank())) / (mass_sp_syn + guides(fill = "none") + labs(tag = "b") + theme(axis.title.x = element_blank())) / (mass_sp_ol  + labs(tag = "c")) + plot_layout(guides = "collect", heights = c(1, 1, 1)) &
@@ -2213,7 +1954,7 @@ mass_sp_ol <- ggplot() +
         plot.tag = element_text(face = "bold"))
 ```
 
-![](Plots_files/figure-gfm/8-mass-specific%20optics%20plot-1.png)<!-- -->
+![](Plots_files/figure-gfm/7-mass-specific%20optics%20plot-1.png)<!-- -->
 
     ```
 
@@ -2225,7 +1966,7 @@ mass_sp_ol <- ggplot() +
 
 ########################### 
 
-    ```{r,9-boxplot, fig.asp=0.8, fig.width=22, warning=FALSE, message=FALSE, wrapper = TRUE}
+    ```{r,8-boxplot, fig.asp=0.8, fig.width=22, warning=FALSE, message=FALSE, wrapper = TRUE}
 
 ``` r
 ggplot(data = mass_sp) +
@@ -2256,7 +1997,7 @@ ggplot(data = mass_sp) +
   theme(axis.text.x = element_text(angle = 15,vjust = 0.7))
 ```
 
-![](Plots_files/figure-gfm/9-boxplot-1.png)<!-- -->
+![](Plots_files/figure-gfm/8-boxplot-1.png)<!-- -->
 
     ```
 
@@ -2267,6 +2008,8 @@ ggplot(data = mass_sp) +
 # SUPPLEMENTARY MATERIAL
 
 ########################### 
+
+## SPECTRA
 
 ``` r
 supp_data <- sf %>%
@@ -2368,7 +2111,282 @@ cp.plot <- supp_data %>%
 
     ```
 
-    ```{r,g, fig.asp=0.5, fig.width=16, message=FALSE, warning=FALSE}
+## PIGMENTS
+
+- 
+
+``` r
+spec_decomp <- gaus %>%
+  filter(exp_no == 2, tp == 1) %>%
+  distinct() %>%
+  ggplot() +
+  geom_line(
+    aes(
+      x = wl,
+      y = ap,
+      color = spectra_label,
+      group = interaction(phyto, spectra,  exp_no)
+    ),
+    size = 1,
+    alpha = 0.7
+  ) +
+  labs(x = expression(bold(Wavelength ~ nm ^ -1)),
+        y = expression(bold(italic(a[p]) ~ (
+         m ^ -1))),
+       color = "") +
+  facet_wrap( ~ factor(phyto, levels = unique(gaus$phyto)),
+              # scales = "free_y",
+              labeller = label_parsed) +
+  scale_color_manual(values = gaus.colors) +
+  theme_linedraw(21) +
+  custom.theme 
+```
+
+- 
+
+``` r
+ratios.data <- pigs %>% 
+  filter(spectra %in% c("ppc_chla", "psc_chla", "ppc_chla", "pub_peb", "pe_chla", "chlb_chla")) %>% 
+  mutate(peak = ifelse(peak == Inf, NA, peak))
+
+tp_pigs <- ggplot() +
+  geom_rect(
+    data = shade,
+    aes(
+      xmin = dusk,
+      xmax = dawn,
+      ymin = bottom,
+      ymax = top
+    ),
+    fill = 'light grey',
+    alpha = 0.4
+  ) +
+   geom_rect(
+    data = shade.pre,
+    aes(
+      xmin = dusk,
+      xmax = dawn,
+      ymin = bottom,
+      ymax = top
+    ),
+    fill = 'light grey',
+    alpha = 0.4
+  ) +
+   geom_rect(
+    data = shade.pre,
+    aes(
+      xmin = dusk,
+      xmax = dawn,
+      ymin = bottom,
+      ymax = top
+    ),
+    fill = 'light grey',
+    alpha = 0.4
+  ) +
+  geom_line(
+    data = ratios.data %>% filter(phyto == "italic('T. pseudonana')" & spectra %in% c("ppc_chla", "psc_chla")),
+    aes(
+      x = plot_datetime,
+      y = peak,
+      linetype = as.character(exp_no),
+      group = interaction(phyto, exp_no, spectra)
+    ),
+   color = "black",
+    size = 1,
+    alpha = 0.7
+  ) +
+  geom_point(
+    data = ratios.data %>% filter(phyto == "italic('T. pseudonana')" & spectra %in% c("ppc_chla", "psc_chla")),
+    aes(x = plot_datetime,
+        y = peak,
+      group = interaction(phyto, exp_no, spectra)
+    ),
+    shape = 21,
+    size = 4,
+    fill = "black",
+    color = "black"
+  ) +
+  labs(x =  expression(bold(Hour)),
+       y = expression(bold(Ratio)),
+       shape = "",
+       fill = "",
+       linetype = "Experiment",
+       title = expression(italic(T.~pseudonana))) +
+  scale_x_datetime(
+    date_breaks = "4 hours",
+    date_labels = "%H",
+    limits = c(ymd_hms("2022-11-27 6:00:00"),
+               ymd_hms("2022-11-28 16:00:00"))
+  ) +
+  facet_wrap(~factor(spectra_label, levels = unique(ratios.data$spectra_label)),
+             scales = "free_y",
+              labeller = label_parsed) + 
+  scale_shape_manual(values = c(21, 22)) +
+  guides(color = "none", fill = guide_legend(override.aes = list(shape = 21))) +
+  theme_linedraw(21) +
+  custom.theme
+```
+
+- 
+
+``` r
+syn_pigs <- ggplot() +
+  geom_rect(
+    data = shade,
+    aes(
+      xmin = dusk,
+      xmax = dawn,
+      ymin = bottom,
+      ymax = top
+    ),
+    fill = 'light grey',
+    alpha = 0.4
+  ) +
+   geom_rect(
+    data = shade.pre,
+    aes(
+      xmin = dusk,
+      xmax = dawn,
+      ymin = bottom,
+      ymax = top
+    ),
+    fill = 'light grey',
+    alpha = 0.4
+  ) +
+  geom_line(
+    data = ratios.data %>% filter(phyto == "italic('Synechococcus ') (WH8102)" & spectra %in% c("pe_chla", "pub_peb")),
+    aes(
+      x = plot_datetime,
+      y = peak,
+      linetype = as.character(exp_no),
+      group = interaction(phyto, exp_no, spectra)
+    ),
+    size = 1,
+    alpha = 0.7,
+    color = "black"
+  ) +
+  geom_point(
+    data = ratios.data %>% filter(phyto == "italic('Synechococcus ') (WH8102)" & spectra %in% c("pe_chla", "pub_peb")),
+    aes(x = plot_datetime,
+        y = peak,
+      group = interaction(phyto, exp_no, spectra)
+    ),
+    shape = 21,
+    size = 4,
+    color = "black",
+    fill = "black"
+  ) +
+  labs(x =  expression(bold(Hour)),
+       y = expression(bold(Ratio)),
+       shape = "",
+       fill = "",
+       linetype = "Experiment",
+       title = expression(italic(Synechococcus~(WH8102)))) +
+  scale_x_datetime(
+    date_breaks = "4 hours",
+    date_labels = "%H",
+    limits = c(ymd_hms("2022-11-27 6:00:00"),
+               ymd_hms("2022-11-28 16:00:00"))
+  ) +
+  scale_shape_manual(values = c(21, 22)) +
+ facet_wrap(~factor(spectra_label, levels = unique(ratios.data$spectra_label)),
+             scales = "free_y",
+              labeller = label_parsed) + 
+  guides(color = "none", fill = guide_legend(override.aes = list(shape = 21))) +
+  theme_linedraw(21) +
+  custom.theme
+```
+
+- 
+
+``` r
+ol_pigs <- ggplot() +
+  geom_rect(
+    data = shade,
+    aes(
+      xmin = dusk,
+      xmax = dawn,
+      ymin = bottom,
+      ymax = top
+    ),
+    fill = 'light grey',
+    alpha = 0.4
+  ) +
+   geom_rect(
+    data = shade.pre,
+    aes(
+      xmin = dusk,
+      xmax = dawn,
+      ymin = bottom,
+      ymax = top
+    ),
+    fill = 'light grey',
+    alpha = 0.4
+  ) +
+  geom_line(
+    data = ratios.data %>% filter(phyto == "italic('O. lucimarinus')" & spectra %in% c("ppc_chla", "chlb_chla")),
+    aes(
+      x = plot_datetime,
+      y = peak,
+      linetype = as.character(exp_no),
+      group = interaction(phyto, exp_no, spectra)
+    ),
+    color = "black",
+    size = 1,
+    alpha = 0.7
+  ) +
+  geom_point(
+    data = ratios.data %>% filter(phyto == "italic('O. lucimarinus')" & spectra %in% c("ppc_chla", "chlb_chla")),
+    aes(x = plot_datetime,
+        y = peak,
+      group = interaction(phyto, exp_no, spectra)
+    ),
+    shape = 21,
+    size = 4,
+    color = "black",
+    fill = "black"
+  ) +
+  labs(x =  expression(bold(Hour)),
+       y = expression(bold(Ratio)),
+       shape = "",
+       fill = "",
+       linetype = "Experiment",
+       title = expression(italic(O.~lucimarinus))) +
+  scale_x_datetime(
+    date_breaks = "4 hours",
+    date_labels = "%H",
+    limits = c(ymd_hms("2022-11-27 6:00:00"),
+               ymd_hms("2022-11-28 16:00:00"))
+  ) +
+  scale_shape_manual(values = c(21, 22)) +
+  facet_wrap(~factor(spectra_label, levels = unique(ratios.data$spectra_label)),
+             scales = "free_y",
+              labeller = label_parsed) + 
+  guides(color = "none", fill = guide_legend(override.aes = list(shape = 21))) +
+  theme_linedraw(21) +
+  custom.theme
+```
+
+- 
+
+<!-- -->
+
+    ```{r,supp fig-2, fig.asp=1.4, fig.width=18, warning=FALSE, message=FALSE, wrapper = TRUE}
+
+``` r
+(tp_pigs + guides(linetype = "none") + labs(tag = "a") + theme(axis.title.x = element_blank())) / (syn_pigs + labs(tag = "b") + theme(axis.title.x = element_blank())) / (ol_pigs  + labs(tag = "c")) + plot_layout(guides = "collect", heights = c(1, 1, 1)) &
+    theme(legend.position = "bottom",
+           legend.box="vertical",
+        plot.tag = element_text(face = "bold"))
+```
+
+![](Plots_files/figure-gfm/supp%20fig-2-1.png)<!-- -->
+
+    ```
+
+## GORDON PARAMETER
+
+    ```{r,supp fig-3, fig.asp=0.5, fig.width=16, message=FALSE, warning=FALSE}
 
 ``` r
 g <-  ggplot() +
@@ -2457,6 +2475,6 @@ g <-  ggplot() +
 g
 ```
 
-![](Plots_files/figure-gfm/g-1.png)<!-- -->
+![](Plots_files/figure-gfm/supp%20fig-3-1.png)<!-- -->
 
     ```

@@ -41,8 +41,8 @@ library(rstatix)
 
 
 ```{r import data,  message=FALSE, warning=FALSE, wrapper = TRUE}
-bf <- read_csv("FINAL_BOTTLE.csv")
-sf <- read_csv("FINAL_SUMMARY.csv")
+bf <- read_csv("FINAL_BOTTLE_11102023.csv")
+sf <- read_csv("FINAL_SUMMARY_11102023.csv")
 gaus <- read_csv("Gaussian_Decompositions.csv")
 pigs <- read_csv("Pigment_Ratios.csv")
 pf <- read_csv("PAR.csv")
@@ -236,25 +236,32 @@ cells_data %>%
 ```
 
 ```{r, message=FALSE, warning=FALSE, wrapper = TRUE}
-# optics_summary %>% 
-#   filter(exp %in% c("OL22-2", "OL22-3")) %>% 
-#   select(exp:wl, mean_ap, sd_ap, mean_cp, sd_cp, mean_bbp, sd_bbp, mean_bb_b, sd_bb_b) %>%
-#    # select(exp:wl,  mean_bbp, sd_bbp, mean_bb_b, sd_bb_b) %>% 
-#   # filter(wl == 470) %>% 
-#   # view()
-#   group_by(exp, wl) %>%
-#   # group_by(wl) %>% 
-#   # group_by(tp) %>% 
-#   # filter(between(tp, 5,9)) %>% 
-#   summarize(across(
-#     .cols = c(mean_ap, mean_cp, mean_bbp, mean_bb_b),
-#     .fns = list(min = min, max = max),
-#     # .fns = list(mean = mean, sd = sd),
-#     na.rm = TRUE,
-#     .names = "{fn}_{col}"
-#   ))  %>%
-#   ungroup()
-
+optics_summary %>%
+  # filter(exp %in% c("OL22-2", "OL22-3")) %>%
+  # filter(!between(plot_datetime, as_datetime("2022-11-27 21:00:00 UTC"), as_datetime("2022-11-28 07:00:00 UTC" )) ) %>% 
+  select(exp:wl, mean_ap, sd_ap, mean_cp, sd_cp, mean_bbp, sd_bbp, mean_bb_b, sd_bb_b) %>%
+   # select(exp:wl,  mean_bbp, sd_bbp, mean_bb_b, sd_bb_b) %>%
+  # filter(wl == 470) %>%
+  # view()
+  group_by(exp, wl) %>%
+  # group_by(wl) %>%
+  # group_by(tp) %>%
+  # filter(between(tp, 5,9)) %>%
+  summarize(across(
+    .cols = c(mean_ap, mean_cp, mean_bbp, mean_bb_b),
+    .fns = list(min = min, max = max),
+    # .fns = list(mean = mean, sd = sd),
+    na.rm = TRUE,
+    .names = "{fn}_{col}"
+  ))  %>%
+  mutate(min_mean_ap = abs(min_mean_ap)) %>% 
+  mutate(ap_fc = max_mean_ap/min_mean_ap,
+         cp_fc = max_mean_cp/min_mean_cp,
+         bbp_fc = max_mean_bbp/min_mean_bbp,
+         ap_pc = threadr::percentage_change(min_mean_ap,max_mean_ap),
+         cp_pc = threadr::percentage_change(min_mean_cp,max_mean_cp),
+         bbp_pc = threadr::percentage_change(min_mean_bbp,max_mean_bbp))  %>% 
+  ungroup() 
 ```
 
 
@@ -287,12 +294,21 @@ summary_phyto_stats <- stats_data %>%
 
 
 
+```{r}
+stats_data %>% 
+  group_by( wl) %>% 
+  get_summary_stats(mean_cells:chlb_chla)
+```
+
+
+
 ```{r tp stats, message=FALSE, warning=FALSE, wrapper = TRUE}
 tp_stats <- stats_data %>% 
-  group_by(phyto, wl) %>% 
+   # filter(tp > 2) %>%
+   group_by(phyto, wl) %>% 
   filter(phyto == "t_pseudonana") %>%
   cor_test(vars = c("mean_ap", "mean_cp", "mean_bbp", "mean_bb_b"), vars2 = c("mean_ap", "mean_cp", "mean_bbp", "mean_bb_b", "mean_cells", "mean_chl_line_height", "mean_chl_cell", "mean_poc_optics", "mean_poc_cell","mean_cn", "mean_c_chl", "mean_fsc", "mean_ssc", "ppc_chla", "psc_chla", "mean_red", "mean_Fv_Fm"), use = "pairwise.complete.obs", method = "spearman") %>% 
-    # filter(p < 0.05) %>% 
+    # filter(p < 0.05) %>%
   arrange(phyto, var1,  var2, wl, cor)
 ```
 

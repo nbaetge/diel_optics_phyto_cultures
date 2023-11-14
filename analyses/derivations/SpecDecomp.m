@@ -1,7 +1,8 @@
 %% Import data from text file
 % Script for importing data from the following folder:
 %
-%    filename: /Users/nicholasbaetge/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/derivations/
+%    filename: /Users/nicholasbaetge/Box
+%    Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/derivations/
 %
 
 clear all
@@ -24,7 +25,7 @@ opts.EmptyLineRule = "read";
 
 
 % Import the data
-A = readtable("//Users/nicholasbaetge/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/derivations/TP22-14.csv", opts);
+A = readtable("//Users/nicholasbaetge/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/derivations/OL22-3.csv", opts);
 B = A(:,1:3);
 val_data = unstack(B, "mean_ap", "wl",  'VariableNamingRule', 'preserve');
 vals = val_data{:, 2:84};
@@ -64,20 +65,20 @@ plot(lambda,compspec(:, :, 4))
 
 %%
 export_unsmooth = array2table(ap);
-writetable(export_unsmooth, "decomposed/TP22-14_unsmoothed.csv");
+writetable(export_unsmooth, "decomposed/OL22-3_unsmoothed.csv");
 
 export_amps = array2table(amps);
-writetable(export_amps, "decomposed/TP22-14_amps.csv");
+writetable(export_amps, "decomposed/OL22-3_amps.csv");
 
 export_sumspec = array2table(sumspec);
-writetable(export_sumspec, "decomposed/TP22-14_sumspec.csv");
+writetable(export_sumspec, "decomposed/OL22-3_sumspec.csv");
 
-save('decomposed/TP22-14_decomp_comspec.mat', 'compspec' );
+save('decomposed/OL22-3_decomp_comspec.mat', 'compspec' );
 
 %%
 
 for i = 1:size(compspec,3)
-    filename = ['decomposed/TP22-14_compspec',num2str(i),'.csv'] ;
+    filename = ['decomposed/OL22-3_compspec',num2str(i),'.csv'] ;
     csvwrite(filename,compspec(:,:, i))
 end
 

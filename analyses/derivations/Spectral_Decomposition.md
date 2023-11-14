@@ -1,7 +1,7 @@
 Spectral Decomposition
 ================
 Nicholas Baetge
-Last compiled on 27 March, 2023
+Last compiled on 10 November, 2023
 
 ``` r
 library(tidyverse)
@@ -19,8 +19,8 @@ library(patchwork)
 ############## 
 
 ``` r
-pf <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/final_data/PAR.csv")
-sf <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/final_data/FINAL_SUMMARY.csv")
+pf <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/final_data/PAR.csv")
+sf <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/final_data/FINAL_SUMMARY_11102023.csv")
 ```
 
 ############# 
@@ -176,6 +176,6 @@ combined <- compspec %>%
 ########################### 
 
 ``` r
-write_csv(combined, "~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/final_data/Gaussian_Decompositions.csv")
-write_csv(amps, "~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/final_data/Pigment_Ratios.csv")
+write_csv(combined, "~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/final_data/Gaussian_Decompositions.csv")
+write_csv(amps, "~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/final_data/Pigment_Ratios.csv")
 ```

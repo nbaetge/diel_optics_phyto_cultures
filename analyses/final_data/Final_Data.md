@@ -1,7 +1,7 @@
 Final_Data
 ================
 Nicholas Baetge
-Last compiled on 21 April, 2023
+Last compiled on 10 November, 2023
 
 - 
 
@@ -32,11 +32,11 @@ library(lubridate)
 
 ``` r
 times <- read_csv(
-    "~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/fcm/Cultures_and_Optics/processed_fcm_bottle.csv"
+    "~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/fcm/Cultures_and_Optics/processed_fcm_bottle.csv"
   ) %>% select(exp, tp, datetime:plot_datetime) %>% distinct() 
 
 poc <- read_csv(
-    "~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/poc/processed_chn.csv"
+    "~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/poc/processed_chn.csv"
   ) %>% 
   mutate(poc_optics = case_when(exp == "TP22-14" ~ mean_c_mg_m3  * 0.013,
                                    exp == "SYN22-5" ~ mean_c_mg_m3  * 0.009,
@@ -57,22 +57,22 @@ poc <- read_csv(
   select(exp, tp, poc_culture, sd_poc_culture, pon_culture, sd_pon_culture, poc_optics, sd_poc_optics, pon_optics, sd_pon_optics, mean_cn, sd_cn)
 
 acs_bottle <-
-  read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/acs/processed_acs_bottle.csv") %>% 
+  read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/acs/processed_acs_bottle_11102023.csv") %>% 
   select(-c(7:11)) %>% 
   left_join(., times) %>% 
   distinct()
 
 fcm_bottle <-
   read_csv(
-    "~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/fcm/Cultures_and_Optics/processed_fcm_bottle.csv"
+    "~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/fcm/Cultures_and_Optics/processed_fcm_bottle.csv"
   )
 bb3_bottle <-
-  read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/bb3/processed_bb3_bottle.csv") %>% 
+  read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/bb3/processed_bb3_bottle_11102023.csv") %>% 
   select(-c(ap:bp, date:plot_datetime)) %>%  left_join(., times) %>% 
   distinct()
 
 frr_bottle <-
-  read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/frr/processed_frr_bottle.csv") %>% 
+  read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/frr/processed_frr_bottle.csv") %>% 
   select(-c(datetime:plot_datetime)) %>% 
   left_join(., times) %>% 
   distinct()
@@ -102,7 +102,7 @@ bf <- bind_rows(bf_culture, bf_optics) %>%
 ``` r
 acs_sum <-
   read_csv(
-    "~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/acs/processed_acs_summary.csv"
+    "~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/acs/processed_acs_summary_11102023.csv"
   ) %>% 
   select(-c(6:10)) %>% 
   left_join(., times) %>% 
@@ -110,12 +110,12 @@ acs_sum <-
 
 fcm_sum <-
   read_csv(
-    "~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/fcm/Cultures_and_Optics/processed_fcm_summary.csv"
+    "~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/fcm/Cultures_and_Optics/processed_fcm_summary.csv"
   )
 
 bb3_sum <-
   read_csv(
-    "~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/bb3/processed_bb3_summary.csv"
+    "~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/bb3/processed_bb3_summary_11102023.csv"
   ) %>% 
   select(-c(date:plot_datetime, mean_cp:sd_bb_b)) %>% 
    left_join(., times) %>% 
@@ -123,7 +123,7 @@ bb3_sum <-
 
 frr_sum <-
   read_csv(
-    "~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/frr/processed_frr_summary.csv"
+    "~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/frr/processed_frr_summary.csv"
   ) %>% select(-c(datetime:plot_datetime)) %>% 
    left_join(., times) 
 
@@ -155,8 +155,8 @@ sf <- bind_rows(sf_culture, sf_optics) %>%
     ```{r,save data}
 
 ``` r
-write_csv(bf, "FINAL_BOTTLE.csv")
-write_csv(sf, "FINAL_SUMMARY.csv")
+write_csv(bf, "FINAL_BOTTLE_11102023.csv")
+write_csv(sf, "FINAL_SUMMARY_11102023.csv")
 ```
 
     ```

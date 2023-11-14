@@ -502,7 +502,7 @@ acs_filt_subtract %>% group_by(id) %>%
 
 ```{r import and wrangle corrected data, message=FALSE, wrapper=TRUE}
 corrected_files <-
-  fs::dir_ls(path = "corrected/", regexp = "\\.csv$")
+  fs::dir_ls(path = "corrected_Kostakis/", regexp = "\\.csv$")
 
 acs_corrected <- corrected_files %>%
   purrr::map_dfr(read.csv,
@@ -511,7 +511,7 @@ acs_corrected <- corrected_files %>%
                  .id = "source") %>%
   #shorten the filenames
   mutate(source = gsub(".csv", "", source),
-         source = gsub("corrected/", "", source))  %>%
+         source = gsub("corrected_Kostakis/", "", source))  %>%
   separate(source,
            sep = "_",
            into = c("exp", "bottle", "coeff"))  %>%
@@ -781,8 +781,8 @@ acs_sum <- acs_bottle %>%
 ########################### 
 
 ```{r save data, wrapper=TRUE}
-write_csv(acs_sum, "processed_acs_summary.csv")
-write_csv(acs_bottle, "processed_acs_bottle.csv")
+write_csv(acs_sum, "processed_acs_summary_11102023.csv")
+write_csv(acs_bottle, "processed_acs_bottle_11102023.csv")
 ```
 
 -

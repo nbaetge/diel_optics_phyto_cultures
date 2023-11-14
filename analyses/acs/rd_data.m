@@ -5,93 +5,112 @@
 %
 % Re-run this file for each of the bottles of each experiment
 
-clear all
+clear
 close all
 
 %% Set up the Import Options and import the data
-opts = delimitedTextImportOptions("NumVariables", 12);
+imp_opts = delimitedTextImportOptions("NumVariables", 12);
 
 % Specify range and delimiter
-opts.DataLines = [2, Inf];
-opts.Delimiter = ",";
+imp_opts.DataLines = [2, Inf];
+imp_opts.Delimiter = ",";
 
 % Specify column names and types
-opts.VariableNames = ["exp", "bottle", "tp", "datetime", "date", "time", "wl", "c", "c_se", "a", "a_se", "b"];
-opts.VariableTypes = ["categorical", "categorical", "double", "categorical", "categorical", "datetime", "double", "double", "double", "double", "double", "double"];
+imp_opts.VariableNames = ["exp", "bottle", "tp", "datetime", "date", "time", "wl", "c", "c_se", "a", "a_se", "b"];
+imp_opts.VariableTypes = ["categorical", "categorical", "double", "categorical", "categorical", "datetime", "double", "double", "double", "double", "double", "double"];
 
 % Specify file level properties
-opts.ExtraColumnsRule = "ignore";
-opts.EmptyLineRule = "read";
+imp_opts.ExtraColumnsRule = "ignore";
+imp_opts.EmptyLineRule = "read";
 
 % Specify variable properties
-opts = setvaropts(opts, ["bottle", "datetime"], "EmptyFieldRule", "auto");
-opts = setvaropts(opts, "time", "InputFormat", "HH:mm:ss");
+imp_opts = setvaropts(imp_opts, ["bottle", "datetime"], "EmptyFieldRule", "auto");
+imp_opts = setvaropts(imp_opts, "time", "InputFormat", "HH:mm:ss");
+
+% load psi_s & psi_t from Sullivan et al. 2006
+psi = table();
+psi.wl = [400;402;404;406;408;410;412;414;416;418;420;422;424;426;428;430;432;434;436;438;440;442;444;446;448;450;452;454;456;458;460;462;464;466;468;470;472;474;476;478;480;482;484;486;488;490;492;494;496;498;500;502;504;506;508;510;512;514;516;518;520;522;524;526;528;530;532;534;536;538;540;542;544;546;548;550;552;554;556;558;560;562;564;566;568;570;572;574;576;578;580;582;584;586;588;590;592;594;596;598;600;602;604;606;608;610;612;614;616;618;620;622;624;626;628;630;632;634;636;638;640;642;644;646;648;650;652;654;656;658;660;662;664;666;668;670;672;674;676;678;680;682;684;686;688;690;692;694;696;698;700;702;704;706;708;710;712;714;716;718;720;722;724;726;728;730;732;734;736;738;740;742;744;746;748;750];
+psi.psiT = [0.0001;0.0001;0.0001;0.0001;0;0;0;0.0001;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0.0001;0.0001;0.0001;0.0002;0.0003;0.0003;0.0004;0.0005;0.0006;0.0006;0.0007;0.0008;0.0009;0.001;0.001;0.001;0.001;0.001;0.0009;0.0009;0.0008;0.0007;0.0006;0.0006;0.0005;0.0004;0.0003;0.0003;0.0002;0.0001;0.0001;0;0;0;0;0;0;0;0;0;0.0001;0.0001;0.0001;0.0002;0.0002;0.0002;0.0001;0.0001;0.0001;0;0;-0.0001;-0.0001;-0.0001;-0.0001;-0.0001;-0.0001;0;0;0.0001;0.0002;0.0003;0.0005;0.0007;0.0009;0.0013;0.0017;0.0021;0.0026;0.0032;0.0038;0.0045;0.0054;0.0063;0.0073;0.0083;0.0094;0.0104;0.0113;0.0121;0.0128;0.0133;0.0136;0.0136;0.0133;0.0129;0.0124;0.0116;0.0107];
+psi.a_psiS = [3.0e-05;3.0e-05;3.0e-05;4.0e-05;4.0e-05;4.0e-05;4.0e-05;4.0e-05;4.0e-05;4.0e-05;4.0e-05;3.0e-05;3.0e-05;3.0e-05;3.0e-05;3.0e-05;3.0e-05;3.0e-05;3.0e-05;3.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;0;0;0;0;0;0;0;0;0;0;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;0;1.0e-05;2.0e-05;3.0e-05;3.0e-05;4.0e-05;5.0e-05;5.0e-05;6.0e-05;6.0e-05;6.0e-05;6.0e-05;6.0e-05;6.0e-05;6.0e-05;5.0e-05;5.0e-05;5.0e-05;5.0e-05;4.0e-05;4.0e-05;4.0e-05;4.0e-05;3.0e-05;3.0e-05;3.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;1.0e-05;1.0e-05;1.0e-05;0;0;-1.0e-05;-2.0e-05;-3.0e-05;-4.0e-05;-6.0e-05;-7.0e-05;-8.0e-05;-9.0e-05;-0.00011;-0.00012;-0.00014;-0.00015;-0.00016;-0.00017;-0.00018;-0.00019;-0.00020;-0.00020;-0.00020;-0.00021;-0.00021;-0.00021;-0.00021;-0.00021;-0.00020;-0.00017;-0.00013;-8.0e-05;-1.0e-05;7.0e-05;0.00016;0.00026;0.00037;0.00046;0.00054;0.00061;0.00067];
+psi.c_psiS = [-1.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-3.0e-05;-3.0e-05;-3.0e-05;-3.0e-05;-3.0e-05;-3.0e-05;-3.0e-05;-3.0e-05;-3.0e-05;-3.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-4.0e-05;-5.0e-05;-5.0e-05;-5.0e-05;-5.0e-05;-5.0e-05;-5.0e-05;-5.0e-05;-5.0e-05;-5.0e-05;-5.0e-05;-5.0e-05;-5.0e-05;-5.0e-05;-4.0e-05;-3.0e-05;-3.0e-05;-2.0e-05;-1.0e-05;0;1.0e-05;1.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;2.0e-05;1.0e-05;1.0e-05;1.0e-05;1.0e-05;0;0;0;-1.0e-05;-1.0e-05;-1.0e-05;-1.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-2.0e-05;-3.0e-05;-4.0e-05;-5.0e-05;-6.0e-05;-6.0e-05;-8.0e-05;-9.0e-05;-0.00010;-0.00011;-0.00013;-0.00014;-0.00016;-0.00017;-0.00018;-0.00019;-0.00020;-0.00021;-0.00022;-0.00022;-0.00023;-0.00023;-0.00023;-0.00024;-0.00024;-0.00024;-0.00024;-0.00022;-0.00021;-0.00017;-0.00012;-6.0e-05;2.0e-05;0.00012;0.00022;0.00031;0.00041;0.00049;0.00056;0.00062];
+psi.sigma_psiT = [0.0002;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0;0;0;0;0.0001;0.0001;0.0001;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0;0;0;0.0001;0;0;0;0;0;0;0;0;0;0;0;0;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0001;0.0002;0.0002;0.0003;0.0003;0.0004;0.0004;0.0004;0.0004;0.0005;0.0005;0.0006;0.0006;0.0007;0.0007;0.0007;0.0006;0.0005;0.0004;0.0003;0.0003;0.0004;0.0005;0.0006;0.0007;0.0008;0.0009];
+psi.c_sigma_psiS = [4e-005;4e-005;4e-005;4e-005;4e-005;4e-005;4e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;0;-1e-005;-2e-005;-3e-005;-4e-005;-6e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;2e-005;2e-005;2e-005;3e-005;3e-005;3e-005];
+psi.a_sigma_psiS = [3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;3e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;2e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;NaN;NaN;NaN;NaN;NaN;NaN;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;1e-005;2e-005;2e-005;2e-005;3e-005];
 
 % Import the data
-A = readtable("/Users/nicholasbaetge/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/acs/SYN22-5_A.csv", opts);
-
-%% Run correction
-clear opts
-tp=A{:,3};
-AA=unique(tp); %this is the sample number
-for i=1:length(AA)
-    I=find(tp==AA(i));
-    a(i,:)=A{I,10};
-    err_a(i,:)=A{I,11};
-    c(i,:)=A{I,8};
-    err_c(i,:)=A{I,9};
+pathfolder = '/Users/gui/Documents/Maine/publications/other/Nick_diel_cycle_IOP/Resubmission2/Kostakis_scattering_correction';
+listfile = {dir(fullfile(pathfolder, '*.csv')).name}';
+if ~isfolder(fullfile(pathfolder, 'corrected_Kostakis'))
+  mkdir(fullfile(pathfolder, 'corrected_Kostakis'))
 end
-wl=A{I,7};
-subplot(1,2,1) 
-plot(wl,a)
-subplot(1,2,2)
-plot(wl,c)
+% loop through file to correct
+for f = 1:size(listfile, 1)
+  sample_tocorr = readtable(fullfile(pathfolder, listfile{f}), imp_opts);
+  
+  % Run correction
+  sample_nb = unique(sample_tocorr.tp);
+  wl = sample_tocorr.wl(sample_tocorr.tp == sample_nb(1));
+  a = NaN(length(sample_nb), size(wl, 1));
+  err_a = NaN(length(sample_nb), size(wl, 1));
+  c = NaN(length(sample_nb), size(wl, 1));
+  err_c = NaN(length(sample_nb), size(wl, 1));
+  for i = 1:length(sample_nb)
+    I = sample_tocorr.tp == sample_nb(i);
+    a(i,:) = sample_tocorr.a(I);
+    err_a(i,:) = sample_tocorr{I,11};
+    c(i,:) = sample_tocorr{I,8};
+    err_c(i,:) = sample_tocorr{I,9};
+  end
+  sample_nb = 1:length(sample_nb);
 
-opts = optimset('fminsearch');      
-opts = optimset(opts,'MaxIter',20000000); 
-opts = optimset(opts,'MaxFunEvals',20000);
-opts = optimset(opts,'TolX',1e-8);
-opts = optimset(opts,'TolFun',1e-8);
+  fh = figure(f);
+  subplot(3,2,1)
+  plot(wl, a)
+  title('ap raw')
+  subplot(3,2,2)
+  plot(wl, c)
+  title('cp raw')
 
-wla=wl;
-tmp = xlsread('Sullivan_etal_2006_instrumentspecific.xls');
-phi_T=interp1(tmp(:,1),tmp(:,2),wl,'linear');
+  [a_Tcorr, c_Tcorr] = deltaT_correction(a, c, wl, psi);
+  
+  subplot(3,2,3)
+  plot(wl, a_Tcorr)
+  title('ap delta T corrected')
+  subplot(3,2,4)
+  plot(wl, c_Tcorr)
+  title('cp delta T corrected')
+  
+  idnan = isnan(a_Tcorr);
+  a_Tcorr = a_Tcorr(~all(idnan, 2), :);
+  a_Tcorr = a_Tcorr(:, ~all(idnan, 1));
+  idnan = isnan(c_Tcorr);
+  c_Tcorr = c_Tcorr(~all(idnan, 2), :);
+  c_Tcorr = c_Tcorr(:, ~all(idnan, 1));
+  wl = wl(~all(idnan, 1));
+  sample_nb = sample_nb(~all(idnan, 2));
+  
+  ap_corr = NaN(length(sample_nb), size(wl, 1));
+  cp_corr = NaN(length(sample_nb), size(wl, 1));
+  for i=sample_nb
+    % [ap_corr(i,:), cp_corr(i,:)] = ResidualTemperatureAndScatteringCorrection_Zaneveld(a(i,1:80), c(i,1:80), wl(1:80)', psi);
+    [ap_corr(i,:), cp_corr(i,:)] = ResidualTemperatureAndScatteringCorrection_Kostakis(a_Tcorr(i,:), c_Tcorr(i,:), wl', psi);
+  end
+  
+  subplot(3,2,5) 
+  plot(wl, ap_corr)
+  title('ap residual T & b corrected')
+  subplot(3,2,6)
+  plot(wl, cp_corr)
+  title('cp residual T & b corrected')
+  
+  exportgraphics(fh, fullfile(pathfolder, 'corrected_Kostakis', strrep(listfile{f}, '.csv', '.jpg')),'Resolution', 200)
+  close gcf
 
-for i=1:15 %change based on sample number
-    spectra=a(i,:);
-    I = find(wla>=710 & wla<=750);  % spectral range for optimization (710 to 750nm)   
-    delT = 0;
-    offset = 0;
-    [x1] = fminsearch(@f_T, [delT, offset], opts, spectra(I), phi_T(I)');
-    spectra=spectra-x1(1).*phi_T';
-    a(i,:)=spectra;
-    spectra=c(i,:);
-    delT = 0;
-    offset = 0;
-    [x1] = fminsearch(@f_T, [delT, offset], opts, spectra(I), phi_T(I)');
-    spectra=spectra-x1(1).*phi_T';
-    c(i,:)=spectra;
-end
-
-for i=1:15 %change based on sample number
-    [ap_corr(i,:), cp_corr(i,:)] = ResidualTemperatureAndScatteringCorrection(a(i,1:80), c(i,1:80), wl(1:80)');
-end
-
-figure
-subplot(1,2,1) 
-plot(wl(1:80),ap_corr)
-subplot(1,2,2)
-plot(wl(1:80),cp_corr)
-
-
-%% Save data
-export_ap = array2table(ap_corr);
-writetable(export_ap, "/Users/nicholasbaetge/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/acs/corrected/SYN22-5_A_ap.csv"); %evaluate these in console
-
-export_cp = array2table(cp_corr);
-writetable(export_cp, "/Users/nicholasbaetge/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/acs/corrected/SYN22-5_A_cp.csv");
-
-function costf = f_T(x0, spectra, psiT);
-    costf = sum((spectra - psiT.*x0(1) -x0(2)).^2);
+  % Save data
+  export_ap = array2table(ap_corr);
+  writetable(export_ap, fullfile(pathfolder, 'corrected_Kostakis', strrep(listfile{f}, '.csv', '_ap.csv')));
+  
+  export_cp = array2table(cp_corr);
+  writetable(export_cp, fullfile(pathfolder, 'corrected_Kostakis', strrep(listfile{f}, '.csv', '_cp.csv')));
 end
 

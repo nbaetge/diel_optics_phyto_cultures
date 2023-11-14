@@ -1,7 +1,7 @@
 ACS
 ================
 Nicholas Baetge
-Last compiled on 21 April, 2023
+Last compiled on 10 November, 2023
 
 - 
 
@@ -595,7 +595,7 @@ acs_filt_subtract %>% group_by(id) %>%
 
 ``` r
 corrected_files <-
-  fs::dir_ls(path = "corrected/", regexp = "\\.csv$")
+  fs::dir_ls(path = "corrected_Kostakis/", regexp = "\\.csv$")
 
 acs_corrected <- corrected_files %>%
   purrr::map_dfr(read.csv,
@@ -604,7 +604,7 @@ acs_corrected <- corrected_files %>%
                  .id = "source") %>%
   #shorten the filenames
   mutate(source = gsub(".csv", "", source),
-         source = gsub("corrected/", "", source))  %>%
+         source = gsub("corrected_Kostakis/", "", source))  %>%
   separate(source,
            sep = "_",
            into = c("exp", "bottle", "coeff"))  %>%
@@ -906,6 +906,25 @@ acs_sum <- acs_bottle %>%
   left_join(acs_bottle %>% select(1:4, 6:11) %>% distinct() %>% mutate_at(vars(tp), as.numeric), .)
 ```
 
+    ## Warning: There was 1 warning in `summarize()`.
+    ## ℹ In argument: `across(...)`.
+    ## ℹ In group 1: `exp = "OL22-2"`, `tp = 1`, `wl = 400`.
+    ## Caused by warning:
+    ## ! The `...` argument of `across()` is deprecated as of dplyr 1.1.0.
+    ## Supply arguments directly to `.fns` through an anonymous function instead.
+    ## 
+    ##   # Previously
+    ##   across(a:b, mean, na.rm = TRUE)
+    ## 
+    ##   # Now
+    ##   across(a:b, \(x) mean(x, na.rm = TRUE))
+
+    ## Warning in left_join(acs_bottle %>% select(1:4, 6:11) %>% distinct() %>% : Detected an unexpected many-to-many relationship between `x` and `y`.
+    ## ℹ Row 1 of `x` matches multiple rows in `y`.
+    ## ℹ Row 4981 of `y` matches multiple rows in `x`.
+    ## ℹ If a many-to-many relationship is expected, set `relationship =
+    ##   "many-to-many"` to silence this warning.
+
     ```
 
 ########################### 
@@ -917,8 +936,8 @@ acs_sum <- acs_bottle %>%
     ```{r,save data}
 
 ``` r
-write_csv(acs_sum, "processed_acs_summary.csv")
-write_csv(acs_bottle, "processed_acs_bottle.csv")
+write_csv(acs_sum, "processed_acs_summary_11102023.csv")
+write_csv(acs_bottle, "processed_acs_bottle_11102023.csv")
 ```
 
     ```

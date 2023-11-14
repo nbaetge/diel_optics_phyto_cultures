@@ -69,15 +69,15 @@ custom.theme <- theme(
 ```{r read in acs data for bb derivations, message=FALSE, warning=FALSE, wrapper = TRUE}
 #data for bb wavelengths
 acs_bottle <-
-  read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/acs/processed_acs_bottle.csv") %>% 
+  read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/acs/processed_acs_bottle_11102023.csv") %>% 
   filter(wl %in% c(470, 532, 660)) %>%
   select(-c(c_se, a_se))
 ```
 
 ```{r read in acs and fcm data, message=FALSE, warning=FALSE, wrapper = TRUE}
 #summary files
-acs_summary <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/acs/processed_acs_summary.csv") %>% select(-datetime)
-fcm_summary <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/2022_Experiments/fcm/Cultures_and_Optics/processed_fcm_summary.csv") %>% 
+acs_summary <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/acs/processed_acs_summary_11102023.csv") %>% select(-datetime)
+fcm_summary <- read_csv("~/Box Sync/Phyto_bbp/DATA/FINAL/diel_optics_phyto_cultures/analyses/fcm/Cultures_and_Optics/processed_fcm_summary.csv") %>% 
   filter(source == "Optics") %>% 
   select(-datetime)
 
@@ -407,8 +407,8 @@ bb3_sum <- bbp %>%
 ########################### 
 
 ```{r save data, wrapper=TRUE}
-write_csv(bbp, "processed_bb3_bottle.csv")
-write_csv(bb3_sum, "processed_bb3_summary.csv")
+write_csv(bbp, "processed_bb3_bottle_11102023.csv")
+write_csv(bb3_sum, "processed_bb3_summary_11102023.csv")
 ```
 
 -
