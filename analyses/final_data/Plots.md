@@ -1,7 +1,7 @@
 Plots
 ================
 Nicholas Baetge
-Last compiled on 13 November, 2023
+Last compiled on 14 November, 2023
 
 - 
 
@@ -1602,7 +1602,7 @@ cor_levels2 = c("italic('T. pseudonana')",  "italic('Synechococcus ') (WH8102)",
 
 ggplot(data = corr, aes(factor(wl, levels = unique(corr$wl)), factor(var4, levels = rev(cor_levels)), fill = cor)) +
   geom_tile(color = "white") + 
-  geom_text(aes(label = cor), color = "black", size = 5, fontface = "bold") +
+  geom_text(aes(label = cor), color = "black", size = 8, fontface = "bold") +
   scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
    midpoint = 0, limit = c(-1,1), space = "Lab", 
    name="Spearman's rho") +

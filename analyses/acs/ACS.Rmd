@@ -664,7 +664,7 @@ cp.plot <- spectra_subtract %>%
 
 -
 
-calculating chlorophyll concentrations based on Roesler and Barnard (2015), where chl (mg/m^3) = (alh (m^-1) + 0.012 (m^1)) / 0.0104 (m^2/mg)
+calculating chlorophyll concentrations based on Roesler and Barnard (2015), where chl (mg/m^3) = (alh (m^-1)) / 0.0104 (m^2/mg)
 
 ```{r calculate chl, message=FALSE, wrapper=TRUE}
 acs_alh <- spectra_subtract %>%
@@ -681,7 +681,7 @@ acs_alh <- spectra_subtract %>%
   mutate(
     blank = ((ap[wl == 715] - ap[wl == 650]) / (715 - 650)) * (676 - 650) + ap[wl == 650],
     abs_line_height = ap[wl == 676] - blank,
-    chl_line_height = (abs_line_height + 0.012) / 0.014
+    chl_line_height = (abs_line_height) / 0.014
   ) %>%
   ungroup() %>%
   select(exp, exp2, bottle, tp, abs_line_height, chl_line_height) %>%

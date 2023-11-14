@@ -1,7 +1,7 @@
 ACS
 ================
 Nicholas Baetge
-Last compiled on 10 November, 2023
+Last compiled on 14 November, 2023
 
 - 
 
@@ -806,7 +806,7 @@ acs_alh <- spectra_subtract %>%
   mutate(
     blank = ((ap[wl == 715] - ap[wl == 650]) / (715 - 650)) * (676 - 650) + ap[wl == 650],
     abs_line_height = ap[wl == 676] - blank,
-    chl_line_height = (abs_line_height + 0.012) / 0.014
+    chl_line_height = (abs_line_height) / 0.014
   ) %>%
   ungroup() %>%
   select(exp, exp2, bottle, tp, abs_line_height, chl_line_height) %>%
